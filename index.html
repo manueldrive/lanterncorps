@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#020b08" />
 <title>Green Lantern Corps // Power Battery Log</title>
 
 <!-- Font Awesome 6 -->
@@ -201,6 +202,38 @@
     color: #475569;
     cursor: not-allowed;
     opacity: 0.5;
+  }
+
+  /* Historical View Banner */
+  .history-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-bottom: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: #cbd5e1;
+  }
+
+  .history-reset-btn {
+    background: transparent;
+    border: 1px solid var(--card-accent, #00ff88);
+    color: var(--card-accent, #00ff88);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .history-reset-btn:hover {
+    background: var(--card-accent, #00ff88);
+    color: #020b08;
   }
 
   .schedule-drawer {
@@ -441,6 +474,100 @@
     border-color: rgba(255, 255, 255, 0.2);
     color: #ffffff;
   }
+
+  /* Monday Reflection Debrief Section */
+  .reflection-card {
+    background: rgba(3, 18, 13, 0.96);
+    border: 1px solid var(--card-accent, #00ff88);
+    box-shadow: 0 0 25px rgba(0, 255, 136, 0.15);
+    border-radius: 20px;
+    padding: 20px 18px;
+    margin-bottom: 20px;
+  }
+
+  .reflection-tag {
+    background: rgba(0, 255, 136, 0.12);
+    border: 1px solid var(--card-accent, #00ff88);
+    color: var(--card-accent, #00ff88);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 1px;
+  }
+
+  .q-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: var(--card-accent, #00ff88);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .q-sub {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    line-height: 1.35;
+  }
+
+  .reflection-textarea {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #e2e8f0;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    resize: vertical;
+    min-height: 64px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .reflection-textarea:focus {
+    border-color: var(--card-accent, #00ff88);
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.2);
+  }
+
+  .scripture-box {
+    background: rgba(0, 20, 14, 0.7);
+    border: 1px solid rgba(0, 255, 136, 0.22);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin: 16px 0;
+    text-align: center;
+  }
+
+  .charge-btn {
+    width: 100%;
+    background: var(--card-accent, #00ff88);
+    color: #020b08;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+    transition: all 0.2s ease;
+  }
+  .charge-btn:hover {
+    filter: brightness(1.15);
+    box-shadow: 0 0 28px rgba(0, 255, 136, 0.65);
+  }
 </style>
 </head>
 <body>
@@ -480,6 +607,14 @@ var USERS = {
   }
 };
 
+function todayDateString(dateObj) {
+  var d = dateObj || new Date();
+  var year = d.getFullYear();
+  var month = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return year + "-" + month + "-" + day;
+}
+
 function getDynamicRingStyle(ratio, accent, secondary) {
   var baseOpacity = 0.35 + (ratio * 0.55);
   var peakOpacity = 0.6 + (ratio * 0.4);
@@ -510,10 +645,6 @@ function greenLanternRingSvg(accent, ratio) {
   '</svg>';
 }
 
-function todayDateString() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function defaultUserData() {
   return {
     weight: "",
@@ -525,7 +656,8 @@ function defaultUserData() {
       calories: 1800,
       protein: 100
     },
-    history: {}
+    history: {},
+    reflections: {}
   };
 }
 
@@ -585,6 +717,23 @@ function sanitizeState() {
     if (!state.data[u].history || typeof state.data[u].history !== "object") {
       state.data[u].history = {};
     }
+    
+    // Ensure all history records have valid fields
+    Object.keys(state.data[u].history).forEach(function(dKey) {
+      if (!state.data[u].history[dKey] || typeof state.data[u].history[dKey] !== "object") {
+        state.data[u].history[dKey] = { done: {}, weight: "" };
+      }
+      if (!state.data[u].history[dKey].done || typeof state.data[u].history[dKey].done !== "object") {
+        state.data[u].history[dKey].done = {};
+      }
+      if (state.data[u].history[dKey].weight === undefined) {
+        state.data[u].history[dKey].weight = "";
+      }
+    });
+
+    if (!state.data[u].reflections || typeof state.data[u].reflections !== "object") {
+      state.data[u].reflections = {};
+    }
     if (!Array.isArray(state.data[u].workoutDays)) {
       state.data[u].workoutDays = [3, 5, 0];
     }
@@ -635,7 +784,16 @@ function evaluateDayRecord(uData, dateStr) {
 function syncDayToHistory(userId, dateStr) {
   var uData = state.data[userId];
   var evalResult = evaluateDayRecord(uData, dateStr);
-  uData.history[dateStr] = evalResult;
+  if (!uData.history[dateStr]) {
+    uData.history[dateStr] = { done: {}, weight: "" };
+  }
+  uData.history[dateStr].done = evalResult.done;
+  uData.history[dateStr].weight = evalResult.weight;
+  uData.history[dateStr].passed = evalResult.passed;
+  uData.history[dateStr].missed = evalResult.missed;
+  uData.history[dateStr].isWorkoutDay = evalResult.isWorkoutDay;
+  uData.history[dateStr].totalRequired = evalResult.totalRequired;
+  uData.history[dateStr].completedCount = evalResult.completedCount;
 }
 
 function savePersisted() {
@@ -662,12 +820,19 @@ function initPersistence() {
       Object.keys(USERS).forEach(function(u) {
         syncDayToHistory(u, state.lastActiveDate);
         state.data[u].done = {};
+        state.data[u].weight = "";
+        state.selectedDate[u] = today;
       });
       state.lastActiveDate = today;
       savePersisted();
     } else if (!state.lastActiveDate) {
       state.lastActiveDate = today;
       savePersisted();
+    }
+    
+    var activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA")) {
+      return;
     }
     render();
   });
@@ -773,7 +938,7 @@ function playRingChargeSound(isP2) {
   } catch(e) {}
 }
 
-/* ---------------- Render Components ---------------- */
+/* ---------------- Render Helpers ---------------- */
 function getProtocols(uData) {
   var goals = uData.goals;
   var stepStr = Number(goals.steps).toLocaleString() + " steps";
@@ -799,16 +964,28 @@ function getMondayToSundayDates() {
   var now = new Date();
   var day = now.getDay();
   var diffToMon = (day === 0 ? -6 : 1) - day;
-  var monday = new Date(now);
-  monday.setDate(now.getDate() + diffToMon);
+  var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon);
 
   var dates = [];
   for (var i = 0; i < 7; i++) {
-    var d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    dates.push(d.toISOString().slice(0, 10));
+    var d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+    dates.push(todayDateString(d));
   }
   return dates;
+}
+
+function getPriorWeekDates() {
+  var now = new Date();
+  var day = now.getDay();
+  var diffToMon = (day === 0 ? -6 : 1) - day;
+  var currentMon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon);
+  
+  var prevWeekDates = [];
+  for (var i = 7; i >= 1; i--) {
+    var d = new Date(currentMon.getFullYear(), currentMon.getMonth(), currentMon.getDate() - i);
+    prevWeekDates.push(todayDateString(d));
+  }
+  return prevWeekDates;
 }
 
 function renderWeekGlance(userId) {
@@ -819,7 +996,6 @@ function renderWeekGlance(userId) {
 
   var html = '<div class="week-glance-row">';
   weekDates.forEach(function(dateStr, idx) {
-    var isToday = dateStr === todayStr;
     var isFuture = dateStr > todayStr;
     var isSelected = dateStr === selected;
     var dayEval = evaluateDayRecord(uData, dateStr);
@@ -843,6 +1019,80 @@ function renderWeekGlance(userId) {
   return html;
 }
 
+function renderMondayReflection(userId) {
+  var isMonday = new Date().getDay() === 1;
+  var todayStr = todayDateString();
+  var u = USERS[userId];
+  var uData = state.data[userId] || defaultUserData();
+  var borderAccent = u.accent;
+
+  var reflection = (uData.reflections && uData.reflections[todayStr]) || {
+    wins: "",
+    tension: "",
+    adjustments: "",
+    completed: false
+  };
+
+  if (!isMonday && !reflection.completed) return "";
+
+  var prevWeekDates = getPriorWeekDates();
+
+  var html = '<div class="reflection-card" style="--card-accent:' + borderAccent + '">';
+
+  html += '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">' +
+    '<div>' +
+      '<div style="display:flex; align-items:center; gap:8px;">' +
+        '<i class="fa-solid fa-brain" style="color:' + borderAccent + '; font-size:18px"></i>' +
+        '<div style="font-family:\'Orbitron\'; font-weight:900; font-size:16px; letter-spacing:1px; color:' + borderAccent + '">MONDAY REFLECTION</div>' +
+      '</div>' +
+      '<div style="font-size:11px; text-transform:uppercase; color:#94a3b8; margin-top:2px;">SECTOR 2814 WEEKLY CALIBRATE</div>' +
+    '</div>' +
+    '<div class="reflection-tag">WEEKLY LOG</div>' +
+  '</div>';
+
+  html += '<div style="margin-bottom:16px;">' +
+    '<div class="q-title"><i class="fa-solid fa-trophy"></i> 1. BEHAVIORAL WINS</div>' +
+    '<div class="q-sub">What behavioral wins or non-scale victories felt effortless or strong this past week?</div>' +
+    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-field="wins" placeholder="e.g., Hit 8,000 steps daily even on busy days, packed meals ahead, energy felt high during lifts...">' + (reflection.wins || '') + '</textarea>' +
+  '</div>';
+
+  html += '<div style="margin-bottom:16px;">' +
+    '<div class="q-title"><i class="fa-solid fa-chart-line"></i> 2. TENSION POINTS & 7-DAY MATRIX</div>' +
+    '<div class="q-sub">Review your 7-day consistency below. Where did resistance or missed targets show up?</div>' +
+    '<div style="display:flex; gap:6px; margin: 10px 0;">';
+    DAYS_OF_WEEK.forEach(function(dObj, idx) {
+      var dStr = prevWeekDates[idx];
+      var evalRec = evaluateDayRecord(uData, dStr);
+      var isPass = evalRec.passed;
+      html += '<div style="flex:1; text-align:center; background:' + (isPass ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)') + '; border:1px solid ' + (isPass ? borderAccent : 'rgba(255,255,255,0.18)') + '; border-radius:8px; padding:6px 0;">' +
+        '<div style="font-family:\'Share Tech Mono\'; font-size:10px; color:#94a3b8">' + dObj.label.slice(0, 1) + '</div>' +
+        '<i class="fa-solid ' + (isPass ? 'fa-check' : 'fa-xmark') + '" style="font-size:12px; color:' + (isPass ? borderAccent : '#fff') + '; margin-top:2px;"></i>' +
+      '</div>';
+    });
+  html += '</div>' +
+    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-field="tension" placeholder="e.g., Saturday dinner caused calories to slip; friction came from lack of pre-planned weekend meals...">' + (reflection.tension || '') + '</textarea>' +
+  '</div>';
+
+  html += '<div style="margin-bottom:16px;">' +
+    '<div class="q-title"><i class="fa-solid fa-arrows-rotate"></i> 3. WHAT MUST CHANGE MOVING FORWARD?</div>' +
+    '<div class="q-sub">What specific operational adjustment will you execute over the next 7 days?</div>' +
+    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-field="adjustments" placeholder="e.g., Pre-log weekend meals on Friday, set out workout gear the night before...">' + (reflection.adjustments || '') + '</textarea>' +
+  '</div>';
+
+  html += '<div class="scripture-box">' +
+    '<div style="font-family:\'Orbitron\'; font-size:11px; font-weight:800; color:' + borderAccent + '; letter-spacing:1.5px; margin-bottom:4px;">ROMANS 6:21</div>' +
+    '<div style="font-style:italic; font-size:13px; color:#cbd5e1; margin-bottom:4px;">&ldquo;What fruit did you have then in the things of which you are now ashamed? For the end of those things is death.&rdquo;</div>' +
+    '<div style="font-size:11px; color:#94a3b8">Remember the outcome of old patterns. Walk forward with discipline.</div>' +
+  '</div>';
+
+  html += '<button class="charge-btn" data-action="submit-reflection" data-user="' + userId + '" style="background:' + borderAccent + '">' +
+    '<i class="fa-solid fa-bolt"></i> ' + (reflection.completed ? 'UPDATE REFLECTION &amp; RECHARGE' : 'COMPLETE DEBRIEF &amp; CHARGE BATTERY') +
+  '</button>';
+
+  html += '</div>';
+  return html;
+}
+
 function renderExportModal() {
   if (!state.reportModal) return "";
   var modal = state.reportModal;
@@ -854,9 +1104,8 @@ function renderExportModal() {
   var today = new Date();
   var dateList = [];
   for (var i = daysCount - 1; i >= 0; i--) {
-    var d = new Date();
-    d.setDate(today.getDate() - i);
-    dateList.push(d.toISOString().slice(0, 10));
+    var d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    dateList.push(todayDateString(d));
   }
 
   var missedCount = { weight: 0, steps: 0, macros: 0, protein: 0, workout: 0 };
@@ -945,10 +1194,11 @@ function renderUserPanel(userId) {
 
   var todayStr = todayDateString();
   var activeDate = state.selectedDate[userId] || todayStr;
+  var isViewingPast = activeDate !== todayStr;
 
   var activeEval = evaluateDayRecord(uData, activeDate);
-  var activeDoneMap = activeDate === todayStr ? uData.done : (uData.history[activeDate] ? uData.history[activeDate].done || {} : {});
-  var activeWeight = activeDate === todayStr ? uData.weight : (uData.history[activeDate] ? uData.history[activeDate].weight || "" : "");
+  var activeDoneMap = isViewingPast ? (uData.history[activeDate] ? uData.history[activeDate].done || {} : {}) : uData.done;
+  var activeWeight = isViewingPast ? (uData.history[activeDate] ? uData.history[activeDate].weight || "" : "") : uData.weight;
 
   var activeDayOfWeek = new Date(activeDate + "T12:00:00").getDay();
   var isWorkoutDayForActiveDate = (uData.workoutDays || []).indexOf(activeDayOfWeek) !== -1;
@@ -973,10 +1223,15 @@ function renderUserPanel(userId) {
     '</button>' +
   '</div>';
 
-  // Week-at-a-Glance Matrix (Mon to Sun)
   html += renderWeekGlance(userId);
 
-  // Schedule & Target Goal Drawer
+  if (isViewingPast) {
+    html += '<div class="history-banner" style="--card-accent:' + borderAccent + '">' +
+      '<div><i class="fa-solid fa-clock-rotate-left" style="color:' + borderAccent + '; margin-right:6px"></i>Editing Historical Log: <strong>' + activeDate + '</strong></div>' +
+      '<button class="history-reset-btn" data-action="return-today" data-user="' + userId + '">TODAY</button>' +
+    '</div>';
+  }
+
   if (isSettingsOpen) {
     var hasProteinTrack = uData.trackProtein === true;
     html += '<div class="schedule-drawer" style="border-color:' + borderAccent + '66">' +
@@ -1027,6 +1282,10 @@ function renderUserPanel(userId) {
     '</div>';
   }
 
+  // Monday Reflection Debrief
+  html += renderMondayReflection(userId);
+
+  // Daily Protocols
   html += '<div>';
   protocols.forEach(function(p) {
     if (p.type === "workout_day" && !isWorkoutDayForActiveDate) {
@@ -1151,6 +1410,10 @@ document.getElementById("root").addEventListener("click", function(e) {
     if (dG > todayDateString()) return;
     state.selectedDate[uG] = dG;
     render();
+  } else if (action === "return-today") {
+    var uR = el.dataset.user;
+    state.selectedDate[uR] = todayDateString();
+    render();
   } else if (action === "toggle-settings") {
     var uS = el.dataset.user;
     state.openSettings[uS] = !state.openSettings[uS];
@@ -1186,6 +1449,20 @@ document.getElementById("root").addEventListener("click", function(e) {
   } else if (action === "close-modal") {
     state.reportModal = null;
     render();
+  } else if (action === "submit-reflection") {
+    var uRef = el.dataset.user;
+    var todayStr = todayDateString();
+    sanitizeState();
+
+    if (!state.data[uRef].reflections[todayStr]) {
+      state.data[uRef].reflections[todayStr] = { wins: "", tension: "", adjustments: "", completed: true };
+    } else {
+      state.data[uRef].reflections[todayStr].completed = true;
+    }
+
+    playRingChargeSound(uRef === "p2");
+    savePersisted();
+    render();
   } else if (action === "toggle-check") {
     var u = el.dataset.user;
     var proto = el.dataset.protocol;
@@ -1198,7 +1475,10 @@ document.getElementById("root").addEventListener("click", function(e) {
       if (!state.data[u].history[dateTarget]) {
         state.data[u].history[dateTarget] = { done: {}, weight: "" };
       }
-      var prev = state.data[u].history[dateTarget].done[proto];
+      if (!state.data[u].history[dateTarget].done || typeof state.data[u].history[dateTarget].done !== "object") {
+        state.data[u].history[dateTarget].done = {};
+      }
+      var prev = !!state.data[u].history[dateTarget].done[proto];
       state.data[u].history[dateTarget].done[proto] = !prev;
     }
 
@@ -1242,23 +1522,44 @@ document.getElementById("root").addEventListener("change", function(e) {
 });
 
 document.getElementById("root").addEventListener("input", function(e) {
-  var el = e.target.closest("[data-action='set-weight']");
-  if (!el) return;
-  var u = el.dataset.user;
-  var dateTarget = el.dataset.date || todayDateString();
-  sanitizeState();
+  var elWeight = e.target.closest("[data-action='set-weight']");
+  if (elWeight) {
+    var uW = elWeight.dataset.user;
+    var dateTarget = elWeight.dataset.date || todayDateString();
+    sanitizeState();
 
-  if (dateTarget === todayDateString()) {
-    state.data[u].weight = el.value;
-  } else {
-    if (!state.data[u].history[dateTarget]) {
-      state.data[u].history[dateTarget] = { done: {}, weight: "" };
+    if (dateTarget === todayDateString()) {
+      state.data[uW].weight = elWeight.value;
+    } else {
+      if (!state.data[uW].history[dateTarget]) {
+        state.data[uW].history[dateTarget] = { done: {}, weight: "" };
+      }
+      state.data[uW].history[dateTarget].weight = elWeight.value;
     }
-    state.data[u].history[dateTarget].weight = el.value;
+    return;
+  }
+
+  var elReflect = e.target.closest("[data-action='set-reflection']");
+  if (elReflect) {
+    var uR = elReflect.dataset.user;
+    var field = elReflect.dataset.field;
+    var todayStr = todayDateString();
+    sanitizeState();
+
+    if (!state.data[uR].reflections[todayStr]) {
+      state.data[uR].reflections[todayStr] = { wins: "", tension: "", adjustments: "", completed: false };
+    }
+    state.data[uR].reflections[todayStr][field] = elReflect.value;
   }
 });
 
-setInterval(render, 10000);
+setInterval(function() {
+  var activeEl = document.activeElement;
+  if (!activeEl || (activeEl.tagName !== "INPUT" && activeEl.tagName !== "TEXTAREA")) {
+    render();
+  }
+}, 10000);
+
 initPersistence();
 </script>
 </body>
