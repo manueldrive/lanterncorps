@@ -204,7 +204,7 @@
     opacity: 0.5;
   }
 
-  /* Historical View Banner */
+  /* Historical View Indicator Banner */
   .history-banner {
     display: flex;
     justify-content: space-between;
@@ -718,7 +718,7 @@ function sanitizeState() {
       state.data[u].history = {};
     }
     
-    // Ensure all history records have valid fields
+    // Ensure all historical entries have reliable properties
     Object.keys(state.data[u].history).forEach(function(dKey) {
       if (!state.data[u].history[dKey] || typeof state.data[u].history[dKey] !== "object") {
         state.data[u].history[dKey] = { done: {}, weight: "" };
@@ -753,7 +753,7 @@ function evaluateDayRecord(uData, dateStr) {
   var isWorkoutDay = (uData.workoutDays || []).indexOf(dayOfWeek) !== -1;
   var hasProtein = uData.trackProtein === true;
 
-  var sourceDone = isToday ? uData.done : (uData.history[dateStr] ? uData.history[dateStr].done || {} : {});
+  var sourceDone = isToday ? (uData.done || {}) : (uData.history[dateStr] ? (uData.history[dateStr].done || {}) : {});
   var sourceWeight = isToday ? uData.weight : (uData.history[dateStr] ? uData.history[dateStr].weight : "");
 
   var required = ["steps", "macros"];
@@ -787,7 +787,7 @@ function syncDayToHistory(userId, dateStr) {
   if (!uData.history[dateStr]) {
     uData.history[dateStr] = { done: {}, weight: "" };
   }
-  uData.history[dateStr].done = evalResult.done;
+  uData.history[dateStr].done = Object.assign({}, evalResult.done);
   uData.history[dateStr].weight = evalResult.weight;
   uData.history[dateStr].passed = evalResult.passed;
   uData.history[dateStr].missed = evalResult.missed;
@@ -916,7 +916,12 @@ function initPersistence() {
 
 function playRingChargeSound(isP2) {
   try {
-    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    var ctx = new AudioContext();
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(function(){});
+    }
     var osc = ctx.createOscillator();
     var gain = ctx.createGain();
     
@@ -924,17 +929,18 @@ function playRingChargeSound(isP2) {
     var startFreq = isP2 ? 440 : 523.25;
     var peakFreq = isP2 ? 880 : 1046.5;
     
-    osc.frequency.setValueAtTime(startFreq, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(peakFreq, ctx.currentTime + 0.12);
+    var t = ctx.currentTime;
+    osc.frequency.setValueAtTime(startFreq, t);
+    osc.frequency.exponentialRampToValueAtTime(peakFreq, t + 0.12);
     
-    gain.gain.setValueAtTime(0.001, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(0.15, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
     
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.38);
+    osc.start(t);
+    osc.stop(t + 0.35);
   } catch(e) {}
 }
 
@@ -1140,14 +1146,14 @@ function renderExportModal() {
 
   var passRate = Math.round((totalPassed / totalTracked) * 100);
 
-  var html = '<div class="modal-overlay" data-action="close-modal">' +
-    '<div class="modal-card" onclick="event.stopPropagation()" style="border-color:' + borderAccent + '">' +
+  var html = '<div class="modal-overlay" data-action="close-modal-overlay">' +
+    '<div class="modal-card" style="border-color:' + borderAccent + '">' +
       '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">' +
         '<div>' +
           '<div style="font-family:\'Orbitron\'; font-weight:900; font-size:18px; color:' + borderAccent + '">' + u.callsign + ' // ' + daysCount + '-Day Export</div>' +
           '<div style="font-size:11px; text-transform:uppercase; color:#94a3b8">Willpower Battery Analysis</div>' +
         '</div>' +
-        '<button data-action="close-modal" class="settings-btn" style="border:none; font-size:16px"><i class="fa-solid fa-xmark"></i></button>' +
+        '<button type="button" data-action="close-modal" class="settings-btn" style="border:none; font-size:16px"><i class="fa-solid fa-xmark"></i></button>' +
       '</div>';
 
   html += '<div style="display:flex; gap:8px; margin-bottom:14px;">' +
@@ -1197,7 +1203,7 @@ function renderUserPanel(userId) {
   var isViewingPast = activeDate !== todayStr;
 
   var activeEval = evaluateDayRecord(uData, activeDate);
-  var activeDoneMap = isViewingPast ? (uData.history[activeDate] ? uData.history[activeDate].done || {} : {}) : uData.done;
+  var activeDoneMap = isViewingPast ? (uData.history[activeDate] ? (uData.history[activeDate].done || {}) : {}) : (uData.done || {});
   var activeWeight = isViewingPast ? (uData.history[activeDate] ? uData.history[activeDate].weight || "" : "") : uData.weight;
 
   var activeDayOfWeek = new Date(activeDate + "T12:00:00").getDay();
@@ -1311,7 +1317,7 @@ function renderUserPanel(userId) {
           '<div style="font-weight:700; font-size:15px">' + p.label + '</div>' +
           '<div style="font-size:11px; color:#94a3b8">' + p.subtext + '</div>' +
         '</div>' +
-        '<button data-action="toggle-check" data-user="' + userId + '" data-protocol="' + p.id + '" data-date="' + activeDate + '" class="check-btn" style="' + (isDone ? 'background:' + borderAccent + '; border-color:' + borderAccent + '; color:#000;' : '') + '">' +
+        '<button type="button" data-action="toggle-check" data-user="' + userId + '" data-protocol="' + p.id + '" data-date="' + activeDate + '" class="check-btn" style="' + (isDone ? 'background:' + borderAccent + '; border-color:' + borderAccent + '; color:#000;' : '') + '">' +
           (isDone ? '<i class="fa-solid fa-check"></i>' : '') + 
         '</button>' +
       '</div>';
@@ -1449,6 +1455,11 @@ document.getElementById("root").addEventListener("click", function(e) {
   } else if (action === "close-modal") {
     state.reportModal = null;
     render();
+  } else if (action === "close-modal-overlay") {
+    if (e.target.classList.contains("modal-overlay")) {
+      state.reportModal = null;
+      render();
+    }
   } else if (action === "submit-reflection") {
     var uRef = el.dataset.user;
     var todayStr = todayDateString();
@@ -1466,16 +1477,18 @@ document.getElementById("root").addEventListener("click", function(e) {
   } else if (action === "toggle-check") {
     var u = el.dataset.user;
     var proto = el.dataset.protocol;
-    var dateTarget = el.dataset.date || todayDateString();
+    var dateTarget = el.dataset.date || state.selectedDate[u] || todayDateString();
     sanitizeState();
 
     if (dateTarget === todayDateString()) {
+      if (!state.data[u].done) state.data[u].done = {};
       state.data[u].done[proto] = !state.data[u].done[proto];
     } else {
+      if (!state.data[u].history) state.data[u].history = {};
       if (!state.data[u].history[dateTarget]) {
         state.data[u].history[dateTarget] = { done: {}, weight: "" };
       }
-      if (!state.data[u].history[dateTarget].done || typeof state.data[u].history[dateTarget].done !== "object") {
+      if (!state.data[u].history[dateTarget].done) {
         state.data[u].history[dateTarget].done = {};
       }
       var prev = !!state.data[u].history[dateTarget].done[proto];
@@ -1497,10 +1510,11 @@ document.getElementById("root").addEventListener("change", function(e) {
   sanitizeState();
 
   if (action === "set-weight") {
-    var dateTarget = el.dataset.date || todayDateString();
+    var dateTarget = el.dataset.date || state.selectedDate[u] || todayDateString();
     if (dateTarget === todayDateString()) {
       state.data[u].weight = el.value;
     } else {
+      if (!state.data[u].history) state.data[u].history = {};
       if (!state.data[u].history[dateTarget]) {
         state.data[u].history[dateTarget] = { done: {}, weight: "" };
       }
@@ -1525,12 +1539,13 @@ document.getElementById("root").addEventListener("input", function(e) {
   var elWeight = e.target.closest("[data-action='set-weight']");
   if (elWeight) {
     var uW = elWeight.dataset.user;
-    var dateTarget = elWeight.dataset.date || todayDateString();
+    var dateTarget = elWeight.dataset.date || state.selectedDate[uW] || todayDateString();
     sanitizeState();
 
     if (dateTarget === todayDateString()) {
       state.data[uW].weight = elWeight.value;
     } else {
+      if (!state.data[uW].history) state.data[uW].history = {};
       if (!state.data[uW].history[dateTarget]) {
         state.data[uW].history[dateTarget] = { done: {}, weight: "" };
       }
