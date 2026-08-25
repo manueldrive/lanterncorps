@@ -56,16 +56,21 @@
     #root { max-width: 1200px; padding: 24px 32px; }
   }
 
-  @keyframes willpowerGlowPrimary {
-    0%, 100% { filter: drop-shadow(0 0 6px #00ff88) drop-shadow(0 0 16px #00cc66); }
-    50% { filter: drop-shadow(0 0 14px #33ff99) drop-shadow(0 0 26px #009944); }
+  /* Rhythmic Willpower Pulse Animation */
+  @keyframes lanternPulse {
+    0%, 100% {
+      opacity: var(--pulse-base-opacity, 0.4);
+      filter: drop-shadow(0 0 var(--pulse-min-blur, 3px) var(--pulse-color)) drop-shadow(0 0 calc(var(--pulse-min-blur, 3px) * 2) var(--pulse-sec-color));
+    }
+    50% {
+      opacity: var(--pulse-peak-opacity, 0.7);
+      filter: drop-shadow(0 0 var(--pulse-max-blur, 10px) var(--pulse-color)) drop-shadow(0 0 calc(var(--pulse-max-blur, 10px) * 2.2) var(--pulse-sec-color));
+    }
   }
-  @keyframes willpowerGlowSecondary {
-    0%, 100% { filter: drop-shadow(0 0 6px #00e5ff) drop-shadow(0 0 16px #00b4d8); }
-    50% { filter: drop-shadow(0 0 14px #5cf2ff) drop-shadow(0 0 26px #0077b6); }
+
+  .pulse-lantern {
+    animation: lanternPulse 2.4s infinite ease-in-out;
   }
-  .glow-p1 { animation: willpowerGlowPrimary 2.4s infinite ease-in-out; }
-  .glow-p2 { animation: willpowerGlowSecondary 2.4s infinite ease-in-out; }
 
   .user-grid { display: block; }
   .user-piece { display: none; }
@@ -305,7 +310,6 @@
     text-shadow: 0 0 12px rgba(0, 255, 136, 0.6);
   }
 
-  /* Modal overlay */
   .modal-overlay {
     position: fixed;
     inset: 0;
@@ -376,7 +380,6 @@ var USERS = {
     id: "p1",
     callsign: "Lantern 0104",
     role: "Sector 2814 Protocol",
-    glowClass: "glow-p1",
     accent: "#00ff88",
     secondary: "#00cc66"
   },
@@ -384,21 +387,39 @@ var USERS = {
     id: "p2",
     callsign: "Lantern 0211",
     role: "Sector 2814 Protocol",
-    glowClass: "glow-p2",
     accent: "#00e5ff",
     secondary: "#00b4d8"
   }
 };
 
-function greenLanternRingSvg(accent) {
+/* Builds dynamic pulsing variables based on goal completion ratio */
+function getDynamicRingStyle(ratio, accent, secondary) {
+  var baseOpacity = 0.35 + (ratio * 0.55);
+  var peakOpacity = 0.6 + (ratio * 0.4);
+  var minBlur = Math.max(2, Math.round(2 + ratio * 8));
+  var maxBlur = Math.max(6, Math.round(6 + ratio * 20));
+
+  return '--pulse-color: ' + accent + '; ' +
+         '--pulse-sec-color: ' + secondary + '; ' +
+         '--pulse-base-opacity: ' + baseOpacity.toFixed(2) + '; ' +
+         '--pulse-peak-opacity: ' + peakOpacity.toFixed(2) + '; ' +
+         '--pulse-min-blur: ' + minBlur + 'px; ' +
+         '--pulse-max-blur: ' + maxBlur + 'px;';
+}
+
+function greenLanternRingSvg(accent, ratio) {
+  if (ratio === undefined) ratio = 0;
+  var centerOpacity = (0.2 + (ratio * 0.8)).toFixed(2);
+  var coreDotSize = 2 + (ratio * 4.5);
+
   return '<svg width="44" height="44" viewBox="0 0 100 100" fill="none">' +
     '<circle cx="50" cy="50" r="45" stroke="' + accent + '" stroke-width="3" fill="#03160f" fill-opacity="0.6"/>' +
-    '<circle cx="50" cy="50" r="36" stroke="' + accent + '" stroke-width="2" stroke-dasharray="4 2" opacity="0.7"/>' +
+    '<circle cx="50" cy="50" r="36" stroke="' + accent + '" stroke-width="2" stroke-dasharray="4 2" opacity="' + (0.3 + ratio * 0.7).toFixed(2) + '"/>' +
     '<rect x="26" y="24" width="48" height="6.5" rx="3" fill="' + accent + '"/>' +
     '<rect x="26" y="69.5" width="48" height="6.5" rx="3" fill="' + accent + '"/>' +
     '<circle cx="50" cy="50" r="23" stroke="' + accent + '" stroke-width="6.5" fill="none"/>' +
-    '<circle cx="50" cy="50" r="10" fill="' + accent + '" fill-opacity="0.3"/>' +
-    '<circle cx="50" cy="50" r="4" fill="#FFFFFF"/>' +
+    '<circle cx="50" cy="50" r="10" fill="' + accent + '" fill-opacity="' + centerOpacity + '"/>' +
+    '<circle cx="50" cy="50" r="' + coreDotSize.toFixed(1) + '" fill="#FFFFFF" fill-opacity="' + (0.4 + ratio * 0.6).toFixed(2) + '"/>' +
   '</svg>';
 }
 
@@ -406,7 +427,7 @@ function defaultUserData() {
   return {
     weight: "",
     done: {},
-    workoutDays: [0, 3, 5], // 0=Sun, 3=Wed, 5=Fri
+    workoutDays: [0, 3, 5],
     goals: {
       steps: 8000,
       calories: 1800,
@@ -419,7 +440,7 @@ function defaultUserData() {
 var state = {
   activeTab: "p1",
   openSettings: { p1: false, p2: false },
-  reportModal: null, // { user: 'p1', days: 7|30 }
+  reportModal: null,
   data: {
     p1: defaultUserData(),
     p2: defaultUserData()
@@ -654,6 +675,25 @@ function getProtocols(goals) {
   ];
 }
 
+function calculateCompletionRatio(uData) {
+  var currentDayOfWeek = new Date().getDay();
+  var isWorkoutDayToday = (uData.workoutDays || []).indexOf(currentDayOfWeek) !== -1;
+  var totalPossible = isWorkoutDayToday ? 5 : 4;
+  var completed = 0;
+
+  if (uData.weight && String(uData.weight).trim() !== "") completed++;
+  if (uData.done.steps) completed++;
+  if (uData.done.macros) completed++;
+  if (uData.done.protein) completed++;
+  if (isWorkoutDayToday && uData.done.workout) completed++;
+
+  return {
+    ratio: Math.min(1, completed / totalPossible),
+    completed: completed,
+    total: totalPossible
+  };
+}
+
 function renderExportModal() {
   if (!state.reportModal) return "";
   var modal = state.reportModal;
@@ -782,6 +822,7 @@ function renderUserPanel(userId) {
   var currentDayOfWeek = new Date().getDay();
   var isWorkoutDayToday = (uData.workoutDays || []).indexOf(currentDayOfWeek) !== -1;
   var protocols = getProtocols(uData.goals);
+  var completion = calculateCompletionRatio(uData);
 
   var html = '<div class="corps-card" style="border-top: 4px solid ' + borderAccent + '">';
   
@@ -792,8 +833,8 @@ function renderUserPanel(userId) {
 
   html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">' +
     '<div style="display:flex; align-items:center; gap:12px;">' +
-      '<div class="' + u.glowClass + '" style="line-height:0">' +
-        greenLanternRingSvg(u.accent) +
+      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(completion.ratio, u.accent, u.secondary) + '">' +
+        greenLanternRingSvg(u.accent, completion.ratio) +
       '</div>' +
       '<div>' +
         '<div style="font-family:\'Orbitron\', monospace; font-size:20px; font-weight:900; letter-spacing:1px; color:' + borderAccent + '">' + u.callsign + '</div>' +
@@ -808,7 +849,6 @@ function renderUserPanel(userId) {
   // Schedule & Target Goal Drawer
   if (isSettingsOpen) {
     html += '<div class="schedule-drawer" style="border-color:' + borderAccent + '66">' +
-      // Target Metrics Configuration
       '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:8px;"><i class="fa-solid fa-sliders" style="margin-right:4px"></i> Daily Target Calibration</div>' +
       
       '<div class="goal-input-row">' +
@@ -826,7 +866,6 @@ function renderUserPanel(userId) {
         '<input type="number" step="5" class="goal-setting-input" value="' + uData.goals.protein + '" data-action="set-goal" data-user="' + userId + '" data-metric="protein" />' +
       '</div>' +
 
-      // Active Workout Days Selector
       '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
         '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '"><i class="fa-regular fa-calendar-check" style="margin-right:4px"></i> Active Workout Days</div>' +
         '<div style="font-size:10px; color:#94a3b8">' + (uData.workoutDays || []).length + ' selected</div>' +
@@ -840,7 +879,6 @@ function renderUserPanel(userId) {
       });
     html += '</div>' +
 
-      // Analytics Export Buttons
       '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:6px;"><i class="fa-solid fa-file-export" style="margin-right:4px"></i> Export Success History</div>' +
       '<div style="display:flex; gap:8px;">' +
         '<button class="export-btn" data-action="export-log" data-user="' + userId + '" data-days="7"><i class="fa-solid fa-chart-simple"></i> Last 7 Days</button>' +
@@ -850,12 +888,10 @@ function renderUserPanel(userId) {
   }
 
   html += '<div>';
-  var visibleProtocolsCount = 0;
   protocols.forEach(function(p) {
     if (p.type === "workout_day" && !isWorkoutDayToday) {
       return;
     }
-    visibleProtocolsCount++;
 
     if (p.type === "input") {
       html += '<div class="protocol-card">' +
@@ -885,18 +921,10 @@ function renderUserPanel(userId) {
   });
   html += '</div>';
 
-  var doneItems = uData.done || {};
-  var activeDoneCount = 0;
-  protocols.forEach(function(p) {
-    if (p.type === "workout_day" && !isWorkoutDayToday) return;
-    if (p.type !== "input" && doneItems[p.id]) activeDoneCount++;
-  });
-  var totalChecklistCount = visibleProtocolsCount - 1;
-
   html += '<div class="hud-stat-box">' +
     '<div class="hud-stat">' +
-      '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Goals Done</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:' + borderAccent + '">' + activeDoneCount + '/' + totalChecklistCount + ' Active</div>' +
+      '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Battery Charge</div>' +
+      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:' + borderAccent + '">' + Math.round(completion.ratio * 100) + '%</div>' +
     '</div>' +
     '<div class="hud-stat">' +
       '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Weight</div>' +
@@ -921,6 +949,9 @@ function render() {
   hours = hours % 12 || 12;
   var timeStr = hours + ":" + (minutes < 10 ? "0" + minutes : minutes);
 
+  var completionP1 = calculateCompletionRatio(state.data.p1);
+  var completionP2 = calculateCompletionRatio(state.data.p2);
+
   var html = '<div style="position:relative; z-index:1">';
 
   html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(0, 255, 136, 0.2); padding-bottom:12px;">' +
@@ -936,11 +967,15 @@ function render() {
 
   html += '<div class="narrow-only" style="display:flex; gap:12px; margin-bottom:16px;">' +
     '<button class="lantern-btn ' + (state.activeTab === 'p1' ? 'selected-p1' : '') + '" data-action="select-tab" data-tab="p1">' +
-      '<div style="line-height:0">' + greenLanternRingSvg("#00ff88") + '</div>' +
+      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(completionP1.ratio, USERS.p1.accent, USERS.p1.secondary) + '">' +
+        greenLanternRingSvg("#00ff88", completionP1.ratio) +
+      '</div>' +
       '<span style="font-family:\'Orbitron\'; font-size:14px; font-weight:800">Lantern 0104</span>' +
     '</button>' +
     '<button class="lantern-btn ' + (state.activeTab === 'p2' ? 'selected-p2' : '') + '" data-action="select-tab" data-tab="p2">' +
-      '<div style="line-height:0">' + greenLanternRingSvg("#00e5ff") + '</div>' +
+      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(completionP2.ratio, USERS.p2.accent, USERS.p2.secondary) + '">' +
+        greenLanternRingSvg("#00e5ff", completionP2.ratio) +
+      '</div>' +
       '<span style="font-family:\'Orbitron\'; font-size:14px; font-weight:800">Lantern 0211</span>' +
     '</button>' +
   '</div>';
