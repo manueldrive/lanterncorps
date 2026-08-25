@@ -152,6 +152,65 @@
     border-color: rgba(255, 255, 255, 0.4);
   }
 
+  .week-glance-row {
+    display: flex;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 6px;
+    margin-bottom: 12px;
+  }
+
+  .glance-day {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 0;
+    border-radius: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+  }
+  .glance-day:hover:not(.future) {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .glance-day.selected {
+    border-color: #fff !important;
+    box-shadow: 0 0 8px rgba(255,255,255,0.4);
+    transform: translateY(-1px);
+  }
+  .glance-day.pass {
+    color: #00ff88;
+    background: rgba(0, 255, 136, 0.12);
+  }
+  .glance-day.fail {
+    color: #ff1744;
+    background: rgba(255, 23, 68, 0.12);
+  }
+  .glance-day.future {
+    color: #475569;
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .date-indicator-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-bottom: 12px;
+    font-size: 12px;
+  }
+
   .schedule-drawer {
     background: rgba(2, 14, 10, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -203,6 +262,35 @@
   }
   .goal-setting-input:focus {
     border-color: #00ff88;
+  }
+
+  .toggle-switch-btn {
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.05);
+    border-radius: 14px;
+    width: 44px;
+    height: 22px;
+    padding: 2px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .toggle-knob {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #94a3b8;
+    transition: all 0.2s ease;
+    display: block;
+  }
+  .toggle-switch-btn.on {
+    background: rgba(0, 255, 136, 0.25);
+    border-color: #00ff88;
+  }
+  .toggle-switch-btn.on .toggle-knob {
+    background: #00ff88;
+    transform: translateX(22px);
+    box-shadow: 0 0 6px #00ff88;
   }
 
   .export-btn {
@@ -373,7 +461,16 @@
 <script>
 "use strict";
 
-var DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+// Week formatted Monday (0) through Sunday (6)
+var DAYS_OF_WEEK = [
+  { label: "Mon", jsDay: 1 },
+  { label: "Tue", jsDay: 2 },
+  { label: "Wed", jsDay: 3 },
+  { label: "Thu", jsDay: 4 },
+  { label: "Fri", jsDay: 5 },
+  { label: "Sat", jsDay: 6 },
+  { label: "Sun", jsDay: 0 }
+];
 
 var USERS = {
   p1: {
@@ -392,7 +489,6 @@ var USERS = {
   }
 };
 
-/* Builds dynamic pulsing variables based on goal completion ratio */
 function getDynamicRingStyle(ratio, accent, secondary) {
   var baseOpacity = 0.35 + (ratio * 0.55);
   var peakOpacity = 0.6 + (ratio * 0.4);
@@ -423,11 +519,16 @@ function greenLanternRingSvg(accent, ratio) {
   '</svg>';
 }
 
+function todayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function defaultUserData() {
   return {
     weight: "",
     done: {},
-    workoutDays: [0, 3, 5],
+    workoutDays: [3, 5, 0], // Wed(3), Fri(5), Sun(0)
+    trackProtein: true,
     goals: {
       steps: 8000,
       calories: 1800,
@@ -439,6 +540,10 @@ function defaultUserData() {
 
 var state = {
   activeTab: "p1",
+  selectedDate: {
+    p1: todayDateString(),
+    p2: todayDateString()
+  },
   openSettings: { p1: false, p2: false },
   reportModal: null,
   data: {
@@ -463,7 +568,7 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 var db = firebase.database();
-var dbRef = db.ref("green_lantern_rings_fitness_v6");
+var dbRef = db.ref("green_lantern_rings_fitness_v9");
 
 function sanitizeState() {
   if (!state.data || typeof state.data !== "object") {
@@ -476,6 +581,9 @@ function sanitizeState() {
     if (!state.data[u].done || typeof state.data[u].done !== "object") {
       state.data[u].done = {};
     }
+    if (state.data[u].trackProtein === undefined) {
+      state.data[u].trackProtein = true;
+    }
     if (!state.data[u].goals || typeof state.data[u].goals !== "object") {
       state.data[u].goals = { steps: 8000, calories: 1800, protein: 100 };
     }
@@ -487,38 +595,56 @@ function sanitizeState() {
       state.data[u].history = {};
     }
     if (!Array.isArray(state.data[u].workoutDays)) {
-      state.data[u].workoutDays = [0, 3, 5];
+      state.data[u].workoutDays = [3, 5, 0];
     }
     if (state.data[u].weight === undefined) {
       state.data[u].weight = "";
     }
+    if (!state.selectedDate[u]) {
+      state.selectedDate[u] = todayDateString();
+    }
   });
 }
 
-function archiveDayState(dateStr) {
-  Object.keys(USERS).forEach(function(u) {
-    var uData = state.data[u];
-    var dayOfWeek = new Date(dateStr + "T12:00:00").getDay();
-    var isWorkoutDay = (uData.workoutDays || []).indexOf(dayOfWeek) !== -1;
-    
-    var required = ["steps", "macros", "protein"];
-    if (isWorkoutDay) required.push("workout");
+function evaluateDayRecord(uData, dateStr) {
+  var isToday = dateStr === todayDateString();
+  var dObj = new Date(dateStr + "T12:00:00");
+  var dayOfWeek = dObj.getDay();
+  var isWorkoutDay = (uData.workoutDays || []).indexOf(dayOfWeek) !== -1;
+  var hasProtein = uData.trackProtein !== false;
 
-    var missed = [];
-    required.forEach(function(reqId) {
-      if (!uData.done[reqId]) missed.push(reqId);
-    });
+  var sourceDone = isToday ? uData.done : (uData.history[dateStr] ? uData.history[dateStr].done || {} : {});
+  var sourceWeight = isToday ? uData.weight : (uData.history[dateStr] ? uData.history[dateStr].weight : "");
 
-    var passed = missed.length === 0 && Boolean(uData.weight);
+  var required = ["steps", "macros"];
+  if (hasProtein) required.push("protein");
+  if (isWorkoutDay) required.push("workout");
 
-    uData.history[dateStr] = {
-      done: Object.assign({}, uData.done),
-      weight: uData.weight || "",
-      passed: passed,
-      missed: missed,
-      isWorkoutDay: isWorkoutDay
-    };
+  var missed = [];
+  required.forEach(function(reqId) {
+    if (!sourceDone[reqId]) missed.push(reqId);
   });
+
+  var hasWeight = sourceWeight !== undefined && String(sourceWeight).trim() !== "";
+  if (!hasWeight) missed.push("weight");
+
+  var passed = missed.length === 0;
+
+  return {
+    done: Object.assign({}, sourceDone),
+    weight: sourceWeight || "",
+    passed: passed,
+    missed: missed,
+    isWorkoutDay: isWorkoutDay,
+    totalRequired: required.length + 1,
+    completedCount: (required.length + 1) - missed.length
+  };
+}
+
+function syncDayToHistory(userId, dateStr) {
+  var uData = state.data[userId];
+  var evalResult = evaluateDayRecord(uData, dateStr);
+  uData.history[dateStr] = evalResult;
 }
 
 function savePersisted() {
@@ -527,10 +653,6 @@ function savePersisted() {
     data: state.data,
     lastActiveDate: state.lastActiveDate
   });
-}
-
-function todayDateString() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function initPersistence() {
@@ -546,8 +668,8 @@ function initPersistence() {
     sanitizeState();
 
     if (state.lastActiveDate && state.lastActiveDate !== today) {
-      archiveDayState(state.lastActiveDate);
       Object.keys(USERS).forEach(function(u) {
+        syncDayToHistory(u, state.lastActiveDate);
         state.data[u].done = {};
       });
       state.lastActiveDate = today;
@@ -661,37 +783,74 @@ function playRingChargeSound(isP2) {
 }
 
 /* ---------------- Render Components ---------------- */
-function getProtocols(goals) {
+function getProtocols(uData) {
+  var goals = uData.goals;
   var stepStr = Number(goals.steps).toLocaleString() + " steps";
   var calStr = "Under " + Number(goals.calories).toLocaleString() + " kcal";
   var protStr = Number(goals.protein) + "g+ protein";
 
-  return [
+  var list = [
     { id: "weight",   label: "Tracked Weight",      type: "input", subtext: "Daily weigh in", icon: "fa-solid fa-weight-scale" },
     { id: "steps",    label: "Hit Steps",           type: "check", subtext: stepStr, icon: "fa-solid fa-person-walking" },
-    { id: "macros",   label: "Followed Plan",       type: "check", subtext: calStr, icon: "fa-solid fa-fire-flame-curved" },
-    { id: "protein",  label: "Hit Protein Goals",   type: "check", subtext: protStr, icon: "fa-solid fa-drumstick-bite" },
-    { id: "workout",  label: "Completed Workout",   type: "workout_day", subtext: "Scheduled workout session", icon: "fa-solid fa-dumbbell" }
+    { id: "macros",   label: "Followed Plan",       type: "check", subtext: calStr, icon: "fa-solid fa-fire-flame-curved" }
   ];
+
+  if (uData.trackProtein !== false) {
+    list.push({ id: "protein", label: "Hit Protein Goals", type: "check", subtext: protStr, icon: "fa-solid fa-drumstick-bite" });
+  }
+
+  list.push({ id: "workout", label: "Completed Workout", type: "workout_day", subtext: "Scheduled workout session", icon: "fa-solid fa-dumbbell" });
+
+  return list;
 }
 
-function calculateCompletionRatio(uData) {
-  var currentDayOfWeek = new Date().getDay();
-  var isWorkoutDayToday = (uData.workoutDays || []).indexOf(currentDayOfWeek) !== -1;
-  var totalPossible = isWorkoutDayToday ? 5 : 4;
-  var completed = 0;
+// Generates Monday through Sunday for current week
+function getMondayToSundayDates() {
+  var now = new Date();
+  var day = now.getDay(); // 0 is Sun, 1 is Mon...
+  var diffToMon = (day === 0 ? -6 : 1) - day;
+  var monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMon);
 
-  if (uData.weight && String(uData.weight).trim() !== "") completed++;
-  if (uData.done.steps) completed++;
-  if (uData.done.macros) completed++;
-  if (uData.done.protein) completed++;
-  if (isWorkoutDayToday && uData.done.workout) completed++;
+  var dates = [];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  return dates;
+}
 
-  return {
-    ratio: Math.min(1, completed / totalPossible),
-    completed: completed,
-    total: totalPossible
-  };
+function renderWeekGlance(userId) {
+  var uData = state.data[userId];
+  var weekDates = getMondayToSundayDates();
+  var todayStr = todayDateString();
+  var selected = state.selectedDate[userId] || todayStr;
+
+  var html = '<div class="week-glance-row">';
+  weekDates.forEach(function(dateStr, idx) {
+    var isToday = dateStr === todayStr;
+    var isFuture = dateStr > todayStr;
+    var isSelected = dateStr === selected;
+    var dayEval = evaluateDayRecord(uData, dateStr);
+
+    var dayStatusClass = isFuture ? "future" : (dayEval.passed ? "pass" : "fail");
+    if (isSelected) dayStatusClass += " selected";
+
+    var icon = '<i class="fa-regular fa-circle" style="font-size:9px; opacity:0.3"></i>';
+    if (!isFuture) {
+      icon = dayEval.passed ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>';
+    }
+
+    var dayLetter = DAYS_OF_WEEK[idx].label;
+
+    html += '<div class="glance-day ' + dayStatusClass + '" data-action="select-glance-date" data-user="' + userId + '" data-date="' + dateStr + '">' +
+      '<span style="font-size:9px; opacity:0.8; margin-bottom:2px">' + dayLetter + '</span>' +
+      icon +
+    '</div>';
+  });
+  html += '</div>';
+  return html;
 }
 
 function renderExportModal() {
@@ -715,21 +874,7 @@ function renderExportModal() {
   var totalPassed = 0;
 
   dateList.forEach(function(dStr) {
-    var isToday = dStr === todayDateString();
-    var record;
-    if (isToday) {
-      var dWeek = new Date().getDay();
-      var isWk = (uData.workoutDays || []).indexOf(dWeek) !== -1;
-      var reqs = ["steps", "macros", "protein"];
-      if (isWk) reqs.push("workout");
-      var m = [];
-      reqs.forEach(function(r) { if (!uData.done[r]) m.push(r); });
-      if (!uData.weight) m.push("weight");
-      record = { passed: m.length === 0, missed: m };
-    } else {
-      record = uData.history[dStr] || { passed: false, missed: ["steps", "macros", "protein", "weight"] };
-    }
-
+    var record = evaluateDayRecord(uData, dStr);
     totalTracked++;
     if (record.passed) {
       totalPassed++;
@@ -780,18 +925,7 @@ function renderExportModal() {
   html += '<div style="font-size:11px; font-weight:700; color:#cbd5e1; margin-bottom:4px; text-transform:uppercase; letter-spacing:1px"><i class="fa-solid fa-calendar-days" style="margin-right:5px"></i> Daily Status Log</div>';
   html += '<div class="cal-grid">';
   dateList.forEach(function(dStr) {
-    var isToday = dStr === todayDateString();
-    var isPass;
-    if (isToday) {
-      var dWeek = new Date().getDay();
-      var isWk = (uData.workoutDays || []).indexOf(dWeek) !== -1;
-      var reqs = ["steps", "macros", "protein"];
-      if (isWk) reqs.push("workout");
-      isPass = reqs.every(function(r) { return uData.done[r]; }) && Boolean(uData.weight);
-    } else {
-      isPass = uData.history[dStr] ? uData.history[dStr].passed : false;
-    }
-
+    var isPass = evaluateDayRecord(uData, dStr).passed;
     var dayNum = dStr.slice(8);
     html += '<div class="cal-cell ' + (isPass ? 'pass' : 'fail') + '" title="' + dStr + '">' +
       '<span style="font-size:9px; opacity:0.8">' + dayNum + '</span>' +
@@ -819,10 +953,20 @@ function renderUserPanel(userId) {
   var borderAccent = u.accent;
   var isSettingsOpen = !!state.openSettings[userId];
 
-  var currentDayOfWeek = new Date().getDay();
-  var isWorkoutDayToday = (uData.workoutDays || []).indexOf(currentDayOfWeek) !== -1;
-  var protocols = getProtocols(uData.goals);
-  var completion = calculateCompletionRatio(uData);
+  var todayStr = todayDateString();
+  var activeDate = state.selectedDate[userId] || todayStr;
+  var isToday = activeDate === todayStr;
+
+  // Active view evaluation
+  var activeEval = evaluateDayRecord(uData, activeDate);
+  var activeDoneMap = isToday ? uData.done : (uData.history[activeDate] ? uData.history[activeDate].done || {} : {});
+  var activeWeight = isToday ? uData.weight : (uData.history[activeDate] ? uData.history[activeDate].weight || "" : "");
+
+  var activeDayOfWeek = new Date(activeDate + "T12:00:00").getDay();
+  var isWorkoutDayForActiveDate = (uData.workoutDays || []).indexOf(activeDayOfWeek) !== -1;
+  var protocols = getProtocols(uData);
+
+  var ratio = activeEval.totalRequired > 0 ? (activeEval.completedCount / activeEval.totalRequired) : 0;
 
   var html = '<div class="corps-card" style="border-top: 4px solid ' + borderAccent + '">';
   
@@ -833,8 +977,8 @@ function renderUserPanel(userId) {
 
   html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">' +
     '<div style="display:flex; align-items:center; gap:12px;">' +
-      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(completion.ratio, u.accent, u.secondary) + '">' +
-        greenLanternRingSvg(u.accent, completion.ratio) +
+      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(ratio, u.accent, u.secondary) + '">' +
+        greenLanternRingSvg(u.accent, ratio) +
       '</div>' +
       '<div>' +
         '<div style="font-family:\'Orbitron\', monospace; font-size:20px; font-weight:900; letter-spacing:1px; color:' + borderAccent + '">' + u.callsign + '</div>' +
@@ -846,8 +990,23 @@ function renderUserPanel(userId) {
     '</button>' +
   '</div>';
 
+  // Week-at-a-Glance Matrix (Mon to Sun)
+  html += renderWeekGlance(userId);
+
+  // Date Navigation Indicator
+  html += '<div class="date-indicator-banner">' +
+    '<div style="display:flex; align-items:center; gap:6px;">' +
+      '<i class="fa-regular fa-calendar" style="color:' + borderAccent + '"></i>' +
+      '<span style="font-family:\'Share Tech Mono\'; font-weight:700; color:' + (isToday ? borderAccent : '#cbd5e1') + '">' +
+        (isToday ? 'TODAY // ' + activeDate : 'LOGGING // ' + activeDate) +
+      '</span>' +
+    '</div>' +
+    (!isToday ? '<button data-action="return-today" data-user="' + userId + '" style="background:none; border:none; color:#00ff88; cursor:pointer; font-family:\'Orbitron\'; font-size:10px; font-weight:800"><i class="fa-solid fa-arrow-rotate-left"></i> RETURN TO TODAY</button>' : '') +
+  '</div>';
+
   // Schedule & Target Goal Drawer
   if (isSettingsOpen) {
+    var hasProteinTrack = uData.trackProtein !== false;
     html += '<div class="schedule-drawer" style="border-color:' + borderAccent + '66">' +
       '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:8px;"><i class="fa-solid fa-sliders" style="margin-right:4px"></i> Daily Target Calibration</div>' +
       
@@ -861,20 +1020,29 @@ function renderUserPanel(userId) {
         '<input type="number" step="50" class="goal-setting-input" value="' + uData.goals.calories + '" data-action="set-goal" data-user="' + userId + '" data-metric="calories" />' +
       '</div>' +
 
-      '<div class="goal-input-row" style="margin-bottom:14px;">' +
-        '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-drumstick-bite" style="width:16px"></i> Protein (g):</span>' +
-        '<input type="number" step="5" class="goal-setting-input" value="' + uData.goals.protein + '" data-action="set-goal" data-user="' + userId + '" data-metric="protein" />' +
-      '</div>' +
+      '<div class="goal-input-row">' +
+        '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-drumstick-bite" style="width:16px"></i> Track Protein:</span>' +
+        '<button class="toggle-switch-btn ' + (hasProteinTrack ? 'on' : '') + '" data-action="toggle-protein" data-user="' + userId + '"><span class="toggle-knob"></span></button>' +
+      '</div>';
 
-      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+      if (hasProteinTrack) {
+        html += '<div class="goal-input-row" style="margin-top:-4px; margin-bottom:14px; padding-left:20px;">' +
+          '<span style="font-size:11px; color:#94a3b8">Protein Goal (g):</span>' +
+          '<input type="number" step="5" class="goal-setting-input" value="' + uData.goals.protein + '" data-action="set-goal" data-user="' + userId + '" data-metric="protein" />' +
+        '</div>';
+      } else {
+        html += '<div style="margin-bottom:10px;"></div>';
+      }
+
+      html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
         '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '"><i class="fa-regular fa-calendar-check" style="margin-right:4px"></i> Active Workout Days</div>' +
-        '<div style="font-size:10px; color:#94a3b8">' + (uData.workoutDays || []).length + ' selected</div>' +
+        '<div style="font-size:10px; color:#94a3b8">' + (uData.workoutDays || []).length + ' selected (Can be 0)</div>' +
       '</div>' +
       '<div style="display:flex; gap:4px; margin-bottom:14px;">';
-      DAYS_OF_WEEK.forEach(function(dayName, dayIndex) {
-        var isSelected = (uData.workoutDays || []).indexOf(dayIndex) !== -1;
-        html += '<button class="day-chip" data-action="toggle-day" data-user="' + userId + '" data-day="' + dayIndex + '" style="' + (isSelected ? 'background:' + borderAccent + '; color:#020b08; border-color:' + borderAccent + '; box-shadow:0 0 8px ' + borderAccent + '88;' : '') + '">' +
-          dayName +
+      DAYS_OF_WEEK.forEach(function(dayObj) {
+        var isSelected = (uData.workoutDays || []).indexOf(dayObj.jsDay) !== -1;
+        html += '<button class="day-chip" data-action="toggle-day" data-user="' + userId + '" data-day="' + dayObj.jsDay + '" style="' + (isSelected ? 'background:' + borderAccent + '; color:#020b08; border-color:' + borderAccent + '; box-shadow:0 0 8px ' + borderAccent + '88;' : '') + '">' +
+          dayObj.label +
         '</button>';
       });
     html += '</div>' +
@@ -889,7 +1057,7 @@ function renderUserPanel(userId) {
 
   html += '<div>';
   protocols.forEach(function(p) {
-    if (p.type === "workout_day" && !isWorkoutDayToday) {
+    if (p.type === "workout_day" && !isWorkoutDayForActiveDate) {
       return;
     }
 
@@ -901,19 +1069,18 @@ function renderUserPanel(userId) {
           '<div style="font-size:11px; color:#94a3b8">' + p.subtext + '</div>' +
         '</div>' +
         '<div style="width:80px">' +
-          '<input class="val-input" type="number" step="0.1" placeholder="---" value="' + (uData.weight || "") + '" data-action="set-weight" data-user="' + userId + '" />' +
+          '<input class="val-input" type="number" step="0.1" placeholder="---" value="' + (activeWeight || "") + '" data-action="set-weight" data-user="' + userId + '" data-date="' + activeDate + '" />' +
         '</div>' +
       '</div>';
     } else {
-      var doneMap = uData.done || {};
-      var isDone = !!doneMap[p.id];
+      var isDone = !!activeDoneMap[p.id];
       html += '<div class="protocol-card ' + (isDone ? activeClass : "") + '">' +
         '<div class="protocol-icon-box" style="' + (isDone ? 'color:' + borderAccent + ';' : '') + '"><i class="' + p.icon + '"></i></div>' +
         '<div style="flex:1">' +
           '<div style="font-weight:700; font-size:15px">' + p.label + '</div>' +
           '<div style="font-size:11px; color:#94a3b8">' + p.subtext + '</div>' +
         '</div>' +
-        '<button data-action="toggle-check" data-user="' + userId + '" data-protocol="' + p.id + '" class="check-btn" style="' + (isDone ? 'background:' + borderAccent + '; border-color:' + borderAccent + '; color:#000;' : '') + '">' +
+        '<button data-action="toggle-check" data-user="' + userId + '" data-protocol="' + p.id + '" data-date="' + activeDate + '" class="check-btn" style="' + (isDone ? 'background:' + borderAccent + '; border-color:' + borderAccent + '; color:#000;' : '') + '">' +
           (isDone ? '<i class="fa-solid fa-check"></i>' : '') + 
         '</button>' +
       '</div>';
@@ -923,16 +1090,18 @@ function renderUserPanel(userId) {
 
   html += '<div class="hud-stat-box">' +
     '<div class="hud-stat">' +
-      '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Battery Charge</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:' + borderAccent + '">' + Math.round(completion.ratio * 100) + '%</div>' +
+      '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Daily Status</div>' +
+      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:18px; color:' + (activeEval.passed ? borderAccent : '#ff1744') + '">' +
+        (activeEval.passed ? '<i class="fa-solid fa-check"></i> COMPLETE' : '<i class="fa-solid fa-xmark"></i> INCOMPLETE') +
+      '</div>' +
     '</div>' +
     '<div class="hud-stat">' +
       '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Weight</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:#fff">' + (uData.weight ? uData.weight + ' <span style="font-size:11px">lbs</span>' : '--') + '</div>' +
+      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:#fff">' + (activeWeight ? activeWeight + ' <span style="font-size:11px">lbs</span>' : '--') + '</div>' +
     '</div>' +
     '<div class="hud-stat">' +
       '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Workout Day</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:15px; color:' + (isWorkoutDayToday ? borderAccent : '#64748b') + '">' + (isWorkoutDayToday ? 'SCHEDULED' : 'REST DAY') + '</div>' +
+      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:15px; color:' + (isWorkoutDayForActiveDate ? borderAccent : '#64748b') + '">' + (isWorkoutDayForActiveDate ? 'SCHEDULED' : 'REST DAY') + '</div>' +
     '</div>' +
   '</div>';
 
@@ -949,8 +1118,10 @@ function render() {
   hours = hours % 12 || 12;
   var timeStr = hours + ":" + (minutes < 10 ? "0" + minutes : minutes);
 
-  var completionP1 = calculateCompletionRatio(state.data.p1);
-  var completionP2 = calculateCompletionRatio(state.data.p2);
+  var evalP1 = evaluateDayRecord(state.data.p1, state.selectedDate.p1 || todayDateString());
+  var evalP2 = evaluateDayRecord(state.data.p2, state.selectedDate.p2 || todayDateString());
+  var ratioP1 = evalP1.totalRequired > 0 ? (evalP1.completedCount / evalP1.totalRequired) : 0;
+  var ratioP2 = evalP2.totalRequired > 0 ? (evalP2.completedCount / evalP2.totalRequired) : 0;
 
   var html = '<div style="position:relative; z-index:1">';
 
@@ -967,14 +1138,14 @@ function render() {
 
   html += '<div class="narrow-only" style="display:flex; gap:12px; margin-bottom:16px;">' +
     '<button class="lantern-btn ' + (state.activeTab === 'p1' ? 'selected-p1' : '') + '" data-action="select-tab" data-tab="p1">' +
-      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(completionP1.ratio, USERS.p1.accent, USERS.p1.secondary) + '">' +
-        greenLanternRingSvg("#00ff88", completionP1.ratio) +
+      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(ratioP1, USERS.p1.accent, USERS.p1.secondary) + '">' +
+        greenLanternRingSvg("#00ff88", ratioP1) +
       '</div>' +
       '<span style="font-family:\'Orbitron\'; font-size:14px; font-weight:800">Lantern 0104</span>' +
     '</button>' +
     '<button class="lantern-btn ' + (state.activeTab === 'p2' ? 'selected-p2' : '') + '" data-action="select-tab" data-tab="p2">' +
-      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(completionP2.ratio, USERS.p2.accent, USERS.p2.secondary) + '">' +
-        greenLanternRingSvg("#00e5ff", completionP2.ratio) +
+      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(ratioP2, USERS.p2.accent, USERS.p2.secondary) + '">' +
+        greenLanternRingSvg("#00e5ff", ratioP2) +
       '</div>' +
       '<span style="font-family:\'Orbitron\'; font-size:14px; font-weight:800">Lantern 0211</span>' +
     '</button>' +
@@ -1002,9 +1173,26 @@ document.getElementById("root").addEventListener("click", function(e) {
   if (action === "select-tab") {
     state.activeTab = el.dataset.tab;
     render();
+  } else if (action === "select-glance-date") {
+    var uG = el.dataset.user;
+    var dG = el.dataset.date;
+    if (dG > todayDateString()) return; // Prevent future selection
+    state.selectedDate[uG] = dG;
+    render();
+  } else if (action === "return-today") {
+    var uR = el.dataset.user;
+    state.selectedDate[uR] = todayDateString();
+    render();
   } else if (action === "toggle-settings") {
     var uS = el.dataset.user;
     state.openSettings[uS] = !state.openSettings[uS];
+    render();
+  } else if (action === "toggle-protein") {
+    var uP = el.dataset.user;
+    sanitizeState();
+    state.data[uP].trackProtein = state.data[uP].trackProtein === false ? true : false;
+    syncDayToHistory(uP, state.selectedDate[uP] || todayDateString());
+    savePersisted();
     render();
   } else if (action === "toggle-day") {
     var uD = el.dataset.user;
@@ -1019,6 +1207,7 @@ document.getElementById("root").addEventListener("click", function(e) {
       days.sort();
     }
     state.data[uD].workoutDays = days;
+    syncDayToHistory(uD, state.selectedDate[uD] || todayDateString());
     savePersisted();
     render();
   } else if (action === "export-log") {
@@ -1032,8 +1221,20 @@ document.getElementById("root").addEventListener("click", function(e) {
   } else if (action === "toggle-check") {
     var u = el.dataset.user;
     var proto = el.dataset.protocol;
+    var dateTarget = el.dataset.date || todayDateString();
     sanitizeState();
-    state.data[u].done[proto] = !state.data[u].done[proto];
+
+    if (dateTarget === todayDateString()) {
+      state.data[u].done[proto] = !state.data[u].done[proto];
+    } else {
+      if (!state.data[u].history[dateTarget]) {
+        state.data[u].history[dateTarget] = { done: {}, weight: "" };
+      }
+      var prev = state.data[u].history[dateTarget].done[proto];
+      state.data[u].history[dateTarget].done[proto] = !prev;
+    }
+
+    syncDayToHistory(u, dateTarget);
     playRingChargeSound(u === "p2");
     savePersisted();
     render();
@@ -1048,7 +1249,16 @@ document.getElementById("root").addEventListener("change", function(e) {
   sanitizeState();
 
   if (action === "set-weight") {
-    state.data[u].weight = el.value;
+    var dateTarget = el.dataset.date || todayDateString();
+    if (dateTarget === todayDateString()) {
+      state.data[u].weight = el.value;
+    } else {
+      if (!state.data[u].history[dateTarget]) {
+        state.data[u].history[dateTarget] = { done: {}, weight: "" };
+      }
+      state.data[u].history[dateTarget].weight = el.value;
+    }
+    syncDayToHistory(u, dateTarget);
     savePersisted();
     render();
   } else if (action === "set-goal") {
@@ -1056,6 +1266,7 @@ document.getElementById("root").addEventListener("change", function(e) {
     var val = parseFloat(el.value);
     if (!isNaN(val) && val > 0) {
       state.data[u].goals[metric] = val;
+      syncDayToHistory(u, state.selectedDate[u] || todayDateString());
       savePersisted();
       render();
     }
@@ -1066,8 +1277,17 @@ document.getElementById("root").addEventListener("input", function(e) {
   var el = e.target.closest("[data-action='set-weight']");
   if (!el) return;
   var u = el.dataset.user;
+  var dateTarget = el.dataset.date || todayDateString();
   sanitizeState();
-  state.data[u].weight = el.value;
+
+  if (dateTarget === todayDateString()) {
+    state.data[u].weight = el.value;
+  } else {
+    if (!state.data[u].history[dateTarget]) {
+      state.data[u].history[dateTarget] = { done: {}, weight: "" };
+    }
+    state.data[u].history[dateTarget].weight = el.value;
+  }
 });
 
 setInterval(render, 10000);
