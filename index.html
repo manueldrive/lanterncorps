@@ -200,18 +200,6 @@
     opacity: 0.5;
   }
 
-  .date-indicator-banner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px;
-    padding: 6px 12px;
-    margin-bottom: 12px;
-    font-size: 12px;
-  }
-
   .schedule-drawer {
     background: rgba(2, 14, 10, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -462,7 +450,6 @@
 <script>
 "use strict";
 
-// Week formatted Monday (0) through Sunday (6)
 var DAYS_OF_WEEK = [
   { label: "Mon", jsDay: 1 },
   { label: "Tue", jsDay: 2 },
@@ -528,8 +515,8 @@ function defaultUserData() {
   return {
     weight: "",
     done: {},
-    workoutDays: [3, 5, 0], // Wed(3), Fri(5), Sun(0)
-    trackProtein: false, // Defaulted to false as requested
+    workoutDays: [3, 5, 0],
+    trackProtein: false,
     goals: {
       steps: 8000,
       calories: 1800,
@@ -805,10 +792,9 @@ function getProtocols(uData) {
   return list;
 }
 
-// Generates Monday through Sunday dates for current week
 function getMondayToSundayDates() {
   var now = new Date();
-  var day = now.getDay(); // 0 is Sun, 1 is Mon...
+  var day = now.getDay();
   var diffToMon = (day === 0 ? -6 : 1) - day;
   var monday = new Date(now);
   monday.setDate(now.getDate() + diffToMon);
@@ -968,7 +954,7 @@ function renderUserPanel(userId) {
 
   var ratio = activeEval.totalRequired > 0 ? (activeEval.completedCount / activeEval.totalRequired) : 0;
 
-  var html = '<div class="corps-card" style="border-top: 4px solid ' + borderAccent + '">';
+  var html = '<div class="corps-card">';
   
   html += '<div class="ring-corner rc-tl" style="border-color:' + borderAccent + '"></div>' +
     '<div class="ring-corner rc-tr" style="border-color:' + borderAccent + '"></div>' +
@@ -992,17 +978,6 @@ function renderUserPanel(userId) {
 
   // Week-at-a-Glance Matrix (Mon to Sun)
   html += renderWeekGlance(userId);
-
-  // Date Navigation Indicator
-  html += '<div class="date-indicator-banner">' +
-    '<div style="display:flex; align-items:center; gap:6px;">' +
-      '<i class="fa-regular fa-calendar" style="color:' + borderAccent + '"></i>' +
-      '<span style="font-family:\'Share Tech Mono\'; font-weight:700; color:' + (isToday ? borderAccent : '#cbd5e1') + '">' +
-        (isToday ? 'TODAY // ' + activeDate : 'LOGGING // ' + activeDate) +
-      '</span>' +
-    '</div>' +
-    (!isToday ? '<button data-action="return-today" data-user="' + userId + '" style="background:none; border:none; color:#00ff88; cursor:pointer; font-family:\'Orbitron\'; font-size:10px; font-weight:800"><i class="fa-solid fa-arrow-rotate-left"></i> RETURN TO TODAY</button>' : '') +
-  '</div>';
 
   // Schedule & Target Goal Drawer
   if (isSettingsOpen) {
@@ -1178,10 +1153,6 @@ document.getElementById("root").addEventListener("click", function(e) {
     var dG = el.dataset.date;
     if (dG > todayDateString()) return;
     state.selectedDate[uG] = dG;
-    render();
-  } else if (action === "return-today") {
-    var uR = el.dataset.user;
-    state.selectedDate[uR] = todayDateString();
     render();
   } else if (action === "toggle-settings") {
     var uS = el.dataset.user;
