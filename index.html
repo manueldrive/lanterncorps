@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Green Lantern Corps // Power Battery Log</title>
+
+<!-- Font Awesome 6 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: #020b08;
+    color: #E2E8F0;
+    font-family: 'Rajdhani', -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+  
+  #space-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    transform: translateZ(0);
+    background: 
+      radial-gradient(circle at 15% 25%, rgba(0, 255, 136, 0.14) 0%, transparent 42%),
+      radial-gradient(circle at 85% 25%, rgba(0, 229, 255, 0.12) 0%, transparent 42%),
+      radial-gradient(circle at 50% 50%, #041f17 0%, #020b08 85%);
+  }
+
+  #star-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  
+  #root {
+    max-width: 460px;
+    margin: 0 auto;
+    padding: 16px 16px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (min-width: 768px) {
+    #root { max-width: 1200px; padding: 24px 32px; }
+  }
+
+  @keyframes willpowerGlowPrimary {
+    0%, 100% { filter: drop-shadow(0 0 6px #00ff88) drop-shadow(0 0 16px #00cc66); }
+    50% { filter: drop-shadow(0 0 14px #33ff99) drop-shadow(0 0 26px #009944); }
+  }
+  @keyframes willpowerGlowSecondary {
+    0%, 100% { filter: drop-shadow(0 0 6px #00e5ff) drop-shadow(0 0 16px #00b4d8); }
+    50% { filter: drop-shadow(0 0 14px #5cf2ff) drop-shadow(0 0 26px #0077b6); }
+  }
+  .glow-p1 { animation: willpowerGlowPrimary 2.4s infinite ease-in-out; }
+  .glow-p2 { animation: willpowerGlowSecondary 2.4s infinite ease-in-out; }
+
+  .user-grid { display: block; }
+  .user-piece { display: none; }
+  .user-piece.active { display: block; }
+  .wide-only { display: none; }
+
+  @media (min-width: 768px) {
+    .user-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .user-piece { display: block !important; }
+    .narrow-only { display: none !important; }
+    .wide-only { display: flex !important; }
+  }
+
+  .corps-card {
+    background: rgba(4, 20, 15, 0.88);
+    border-radius: 18px;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    backdrop-filter: blur(14px);
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ring-corner {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-color: rgba(0, 255, 136, 0.35);
+    pointer-events: none;
+  }
+  .rc-tl { top: 6px; left: 6px; border-top: 2px solid; border-left: 2px solid; }
+  .rc-tr { top: 6px; right: 6px; border-top: 2px solid; border-right: 2px solid; }
+  .rc-bl { bottom: 6px; left: 6px; border-bottom: 2px solid; border-left: 2px solid; }
+  .rc-br { bottom: 6px; right: 6px; border-bottom: 2px solid; border-right: 2px solid; }
+
+  .lantern-btn {
+    flex: 1;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(4, 28, 20, 0.7);
+    color: #fff;
+    cursor: pointer;
+    border-radius: 16px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.25s ease;
+  }
+
+  .lantern-btn.selected-p1 {
+    background: rgba(0, 255, 136, 0.16);
+    border-color: #00ff88;
+    box-shadow: 0 0 16px rgba(0, 255, 136, 0.35);
+  }
+  .lantern-btn.selected-p2 {
+    background: rgba(0, 229, 255, 0.16);
+    border-color: #00e5ff;
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
+  }
+
+  .settings-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #94a3b8;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .settings-btn:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .schedule-drawer {
+    background: rgba(2, 14, 10, 0.85);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 14px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .day-chip {
+    flex: 1;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.03);
+    color: #94a3b8;
+    border-radius: 6px;
+    padding: 6px 0;
+    font-size: 11px;
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+  }
+
+  .protocol-card {
+    background: rgba(6, 26, 19, 0.6);
+    border: 1px solid rgba(0, 255, 136, 0.1);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+  }
+  .protocol-card.completed-p1 {
+    background: rgba(0, 255, 136, 0.15);
+    border-color: #00ff88;
+    box-shadow: inset 0 0 12px rgba(0, 255, 136, 0.25);
+  }
+  .protocol-card.completed-p2 {
+    background: rgba(0, 229, 255, 0.15);
+    border-color: #00e5ff;
+    box-shadow: inset 0 0 12px rgba(0, 229, 255, 0.25);
+  }
+
+  .protocol-icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(0, 255, 136, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    color: #6EE7B7;
+  }
+
+  .check-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 2px solid rgba(0, 255, 136, 0.3);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 13px;
+    transition: all 0.2s ease;
+  }
+
+  .hud-stat-box {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .hud-stat {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(0, 255, 136, 0.12);
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+
+  .val-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.4);
+    color: #fff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    text-align: center;
+    width: 100%;
+    outline: none;
+  }
+
+  .header-clock {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-shadow: 0 0 12px rgba(0, 255, 136, 0.6);
+  }
+</style>
+</head>
+<body>
+
+<div id="space-bg">
+  <canvas id="star-canvas"></canvas>
+</div>
+<div id="root"></div>
+
+<script>
+"use strict";
+
+var DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+var USERS = {
+  p1: {
+    id: "p1",
+    callsign: "Lantern 0104",
+    role: "Sector 2814 Protocol",
+    glowClass: "glow-p1",
+    accent: "#00ff88",
+    secondary: "#00cc66"
+  },
+  p2: {
+    id: "p2",
+    callsign: "Lantern 0211",
+    role: "Sector 2814 Protocol",
+    glowClass: "glow-p2",
+    accent: "#00e5ff",
+    secondary: "#00b4d8"
+  }
+};
+
+var PROTOCOLS = [
+  { id: "weight",   label: "Daily Weight",        type: "input", subtext: "Daily weigh in", icon: "fa-solid fa-weight-scale" },
+  { id: "steps",    label: "Daily Steps",         type: "check", subtext: "8,000 steps", icon: "fa-solid fa-person-walking" },
+  { id: "macros",   label: "Daily Macros",        type: "check", subtext: "Under 1,800 calories", icon: "fa-solid fa-fire-flame-curved" },
+  { id: "protein",  label: "Protein Target",      type: "check", subtext: "100+ grams protein", icon: "fa-solid fa-drumstick-bite" },
+  { id: "workout",  label: "Workout Session",     type: "workout_day", subtext: "3x a week workout", icon: "fa-solid fa-dumbbell" }
+];
+
+function greenLanternRingSvg(accent) {
+  return '<svg width="44" height="44" viewBox="0 0 100 100" fill="none">' +
+    '<circle cx="50" cy="50" r="45" stroke="' + accent + '" stroke-width="3" fill="#03160f" fill-opacity="0.6"/>' +
+    '<circle cx="50" cy="50" r="36" stroke="' + accent + '" stroke-width="2" stroke-dasharray="4 2" opacity="0.7"/>' +
+    '<rect x="26" y="24" width="48" height="6.5" rx="3" fill="' + accent + '"/>' +
+    '<rect x="26" y="69.5" width="48" height="6.5" rx="3" fill="' + accent + '"/>' +
+    '<circle cx="50" cy="50" r="23" stroke="' + accent + '" stroke-width="6.5" fill="none"/>' +
+    '<circle cx="50" cy="50" r="10" fill="' + accent + '" fill-opacity="0.3"/>' +
+    '<circle cx="50" cy="50" r="4" fill="#FFFFFF"/>' +
+  '</svg>';
+}
+
+function defaultUserData() {
+  return {
+    weight: "",
+    done: {},
+    workoutDays: [0, 3, 5] // 0=Sun, 3=Wed, 5=Fri
+  };
+}
+
+var state = {
+  activeTab: "p1",
+  openSettings: { p1: false, p2: false },
+  data: {
+    p1: defaultUserData(),
+    p2: defaultUserData()
+  },
+  lastActiveDate: null
+};
+
+/* ---------------- Persistence ---------------- */
+var firebaseConfig = {
+  apiKey: "AIzaSyDMxcuNZmdic9AZIL5uQwvGdxKnGW2Uq_c",
+  authDomain: "bao-buddy.firebaseapp.com",
+  databaseURL: "https://bao-buddy-default-rtdb.firebaseio.com",
+  projectId: "bao-buddy",
+  storageBucket: "bao-buddy.firebasestorage.app",
+  messagingSenderId: "167816448505",
+  appId: "1:167816448505:web:35d57633f3caea0ba71528"
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+var db = firebase.database();
+var dbRef = db.ref("green_lantern_rings_fitness_v3");
+
+function sanitizeState() {
+  if (!state.data || typeof state.data !== "object") {
+    state.data = {};
+  }
+  Object.keys(USERS).forEach(function(u) {
+    if (!state.data[u] || typeof state.data[u] !== "object") {
+      state.data[u] = defaultUserData();
+    }
+    if (!state.data[u].done || typeof state.data[u].done !== "object") {
+      state.data[u].done = {};
+    }
+    if (!Array.isArray(state.data[u].workoutDays)) {
+      state.data[u].workoutDays = [0, 3, 5];
+    }
+    if (state.data[u].weight === undefined) {
+      state.data[u].weight = "";
+    }
+  });
+}
+
+function savePersisted() {
+  sanitizeState();
+  dbRef.set({
+    data: state.data,
+    lastActiveDate: state.lastActiveDate
+  });
+}
+
+function todayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function initPersistence() {
+  dbRef.on("value", function (snapshot) {
+    var saved = snapshot.val();
+    var today = todayDateString();
+
+    if (saved) {
+      if (saved.data) state.data = saved.data;
+      if (saved.lastActiveDate) state.lastActiveDate = saved.lastActiveDate;
+    }
+
+    sanitizeState();
+
+    if (state.lastActiveDate !== today) {
+      Object.keys(USERS).forEach(function(u) {
+        state.data[u].done = {};
+      });
+      state.lastActiveDate = today;
+      savePersisted();
+    }
+    render();
+  });
+}
+
+/* ---------------- Canvas Starfield & Audio ---------------- */
+(function initStarfield() {
+  var canvas = document.getElementById("star-canvas");
+  var ctx = canvas.getContext("2d");
+  var width, height;
+  var STAR_COUNT = 130;
+  var stars = [];
+
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }
+
+  function createStar() {
+    return {
+      x: Math.random() * width,
+      y: Math.random() * height,
+      size: Math.random() * 1.6 + 0.4,
+      alpha: Math.random() * 0.8 + 0.2,
+      speed: Math.random() * 0.016 + 0.005,
+      direction: Math.random() > 0.5 ? 1 : -1
+    };
+  }
+
+  function init() {
+    resize();
+    stars.length = 0;
+    for (var i = 0; i < STAR_COUNT; i++) {
+      stars.push(createStar());
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, width, height);
+
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      s.alpha += s.speed * s.direction;
+
+      if (s.alpha >= 1) {
+        s.alpha = 1;
+        s.direction = -1;
+      } else if (s.alpha <= 0.1) {
+        s.alpha = 0.1;
+        s.direction = 1;
+      }
+
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+
+      if (s.x < width * 0.35) {
+        ctx.fillStyle = "rgba(0, 255, 136, " + (s.alpha * 0.85) + ")";
+      } else if (s.x > width * 0.65) {
+        ctx.fillStyle = "rgba(0, 229, 255, " + (s.alpha * 0.85) + ")";
+      } else {
+        ctx.fillStyle = "rgba(255, 255, 255, " + s.alpha + ")";
+      }
+
+      ctx.fill();
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  window.addEventListener("resize", function() {
+    resize();
+    stars.forEach(function(s) {
+      s.x = Math.random() * width;
+      s.y = Math.random() * height;
+    });
+  });
+
+  init();
+  animate();
+})();
+
+function playRingChargeSound(isP2) {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    
+    osc.type = "sine";
+    var startFreq = isP2 ? 440 : 523.25;
+    var peakFreq = isP2 ? 880 : 1046.5;
+    
+    osc.frequency.setValueAtTime(startFreq, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(peakFreq, ctx.currentTime + 0.12);
+    
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.38);
+  } catch(e) {}
+}
+
+/* ---------------- Render ---------------- */
+function renderUserPanel(userId) {
+  sanitizeState();
+  var u = USERS[userId];
+  var uData = state.data[userId] || defaultUserData();
+  var isP1 = userId === "p1";
+  var activeClass = isP1 ? "completed-p1" : "completed-p2";
+  var borderAccent = u.accent;
+  var isSettingsOpen = !!state.openSettings[userId];
+
+  var currentDayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  var isWorkoutDayToday = (uData.workoutDays || []).indexOf(currentDayOfWeek) !== -1;
+
+  var html = '<div class="corps-card" style="border-top: 4px solid ' + borderAccent + '">';
+  
+  html += '<div class="ring-corner rc-tl" style="border-color:' + borderAccent + '"></div>' +
+    '<div class="ring-corner rc-tr" style="border-color:' + borderAccent + '"></div>' +
+    '<div class="ring-corner rc-bl" style="border-color:' + borderAccent + '"></div>' +
+    '<div class="ring-corner rc-br" style="border-color:' + borderAccent + '"></div>';
+
+  html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">' +
+    '<div style="display:flex; align-items:center; gap:12px;">' +
+      '<div class="' + u.glowClass + '" style="line-height:0">' +
+        greenLanternRingSvg(u.accent) +
+      '</div>' +
+      '<div>' +
+        '<div style="font-family:\'Orbitron\', monospace; font-size:20px; font-weight:900; letter-spacing:1px; color:' + borderAccent + '">' + u.callsign + '</div>' +
+        '<div style="font-size:12px; letter-spacing:1px; text-transform:uppercase; color:#94A3B8">' + u.role + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<button class="settings-btn" data-action="toggle-settings" data-user="' + userId + '" title="Configure workout days" style="' + (isSettingsOpen ? 'color:' + borderAccent + '; border-color:' + borderAccent + ';' : '') + '">' +
+      '<i class="fa-solid fa-gear"></i>' +
+    '</button>' +
+  '</div>';
+
+  // Schedule Drawer under the Lantern Header
+  if (isSettingsOpen) {
+    html += '<div class="schedule-drawer" style="border-color:' + borderAccent + '66">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+        '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '"><i class="fa-regular fa-calendar-check" style="margin-right:4px"></i> Set Active Workout Days</div>' +
+        '<div style="font-size:10px; color:#94a3b8">' + (uData.workoutDays || []).length + ' selected</div>' +
+      '</div>' +
+      '<div style="display:flex; gap:4px;">';
+      DAYS_OF_WEEK.forEach(function(dayName, dayIndex) {
+        var isSelected = (uData.workoutDays || []).indexOf(dayIndex) !== -1;
+        html += '<button class="day-chip" data-action="toggle-day" data-user="' + userId + '" data-day="' + dayIndex + '" style="' + (isSelected ? 'background:' + borderAccent + '; color:#020b08; border-color:' + borderAccent + '; box-shadow:0 0 8px ' + borderAccent + '88;' : '') + '">' +
+          dayName +
+        '</button>';
+      });
+    html += '</div></div>';
+  }
+
+  html += '<div>';
+  var visibleProtocolsCount = 0;
+  PROTOCOLS.forEach(function(p) {
+    // Condition: only show workout protocol if today is a scheduled workout day
+    if (p.type === "workout_day" && !isWorkoutDayToday) {
+      return;
+    }
+    visibleProtocolsCount++;
+
+    if (p.type === "input") {
+      html += '<div class="protocol-card">' +
+        '<div class="protocol-icon-box"><i class="' + p.icon + '"></i></div>' +
+        '<div style="flex:1">' +
+          '<div style="font-weight:700; font-size:15px">' + p.label + '</div>' +
+          '<div style="font-size:11px; color:#94a3b8">' + p.subtext + '</div>' +
+        '</div>' +
+        '<div style="width:80px">' +
+          '<input class="val-input" type="number" step="0.1" placeholder="---" value="' + (uData.weight || "") + '" data-action="set-weight" data-user="' + userId + '" />' +
+        '</div>' +
+      '</div>';
+    } else {
+      var doneMap = uData.done || {};
+      var isDone = !!doneMap[p.id];
+      html += '<div class="protocol-card ' + (isDone ? activeClass : "") + '">' +
+        '<div class="protocol-icon-box" style="' + (isDone ? 'color:' + borderAccent + ';' : '') + '"><i class="' + p.icon + '"></i></div>' +
+        '<div style="flex:1">' +
+          '<div style="font-weight:700; font-size:15px">' + p.label + '</div>' +
+          '<div style="font-size:11px; color:#94a3b8">' + p.subtext + '</div>' +
+        '</div>' +
+        '<button data-action="toggle-check" data-user="' + userId + '" data-protocol="' + p.id + '" class="check-btn" style="' + (isDone ? 'background:' + borderAccent + '; border-color:' + borderAccent + '; color:#000;' : '') + '">' +
+          (isDone ? '<i class="fa-solid fa-check"></i>' : '') + 
+        '</button>' +
+      '</div>';
+    }
+  });
+  html += '</div>';
+
+  var doneItems = uData.done || {};
+  var activeDoneCount = 0;
+  PROTOCOLS.forEach(function(p) {
+    if (p.type === "workout_day" && !isWorkoutDayToday) return;
+    if (p.type !== "input" && doneItems[p.id]) activeDoneCount++;
+  });
+  var totalChecklistCount = visibleProtocolsCount - 1; // Exclude input
+
+  html += '<div class="hud-stat-box">' +
+    '<div class="hud-stat">' +
+      '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Goals Done</div>' +
+      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:' + borderAccent + '">' + activeDoneCount + '/' + totalChecklistCount + ' Active</div>' +
+    '</div>' +
+    '<div class="hud-stat">' +
+      '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Weight</div>' +
+      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:#fff">' + (uData.weight ? uData.weight + ' <span style="font-size:11px">lbs</span>' : '--') + '</div>' +
+    '</div>' +
+    '<div class="hud-stat">' +
+      '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Workout Day</div>' +
+      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:15px; color:' + (isWorkoutDayToday ? borderAccent : '#64748b') + '">' + (isWorkoutDayToday ? 'SCHEDULED' : 'REST DAY') + '</div>' +
+    '</div>' +
+  '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+function render() {
+  sanitizeState();
+  var now = new Date();
+  var hours = now.getHours();
+  var minutes = now.getMinutes();
+  var ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  var timeStr = hours + ":" + (minutes < 10 ? "0" + minutes : minutes);
+
+  var html = '<div style="position:relative; z-index:1">';
+
+  html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(0, 255, 136, 0.2); padding-bottom:12px;">' +
+    '<div>' +
+      '<div style="font-family:\'Share Tech Mono\', monospace; font-size:12px; letter-spacing:2px; color:#6EE7B7;"><i class="fa-solid fa-satellite" style="margin-right:6px"></i>OA CENTRAL BATTERY // LOG</div>' +
+      '<div class="header-clock">' + timeStr + ' <span style="font-size:14px; color:#6EE7B7">' + ampm + '</span></div>' +
+    '</div>' +
+    '<div style="text-align:right">' +
+      '<div style="font-size:11px; letter-spacing:1px; color:#94A3B8;">BATTERY SYNC</div>' +
+      '<div style="font-family:\'Orbitron\'; font-weight:700; color:#00FF88; font-size:13px;">0104 <span style="color:#64748B">&amp;</span> <span style="color:#00E5FF">0211</span></div>' +
+    '</div>' +
+  '</div>';
+
+  html += '<div class="narrow-only" style="display:flex; gap:12px; margin-bottom:16px;">' +
+    '<button class="lantern-btn ' + (state.activeTab === 'p1' ? 'selected-p1' : '') + '" data-action="select-tab" data-tab="p1">' +
+      '<div style="line-height:0">' + greenLanternRingSvg("#00ff88") + '</div>' +
+      '<span style="font-family:\'Orbitron\'; font-size:14px; font-weight:800">Lantern 0104</span>' +
+    '</button>' +
+    '<button class="lantern-btn ' + (state.activeTab === 'p2' ? 'selected-p2' : '') + '" data-action="select-tab" data-tab="p2">' +
+      '<div style="line-height:0">' + greenLanternRingSvg("#00e5ff") + '</div>' +
+      '<span style="font-family:\'Orbitron\'; font-size:14px; font-weight:800">Lantern 0211</span>' +
+    '</button>' +
+  '</div>';
+
+  html += '<div class="user-grid">';
+  Object.keys(USERS).forEach(function(uId) {
+    var active = state.activeTab === uId;
+    html += '<div class="user-piece' + (active ? ' active' : '') + '">' + renderUserPanel(uId) + '</div>';
+  });
+  html += '</div>';
+
+  html += '</div>';
+  document.getElementById("root").innerHTML = html;
+}
+
+/* ---------------- Event Listeners ---------------- */
+document.getElementById("root").addEventListener("click", function(e) {
+  var el = e.target.closest("[data-action]");
+  if (!el) return;
+  var action = el.dataset.action;
+
+  if (action === "select-tab") {
+    state.activeTab = el.dataset.tab;
+    render();
+  } else if (action === "toggle-settings") {
+    var uS = el.dataset.user;
+    state.openSettings[uS] = !state.openSettings[uS];
+    render();
+  } else if (action === "toggle-day") {
+    var uD = el.dataset.user;
+    var day = parseInt(el.dataset.day, 10);
+    sanitizeState();
+    var days = state.data[uD].workoutDays || [];
+    var idx = days.indexOf(day);
+    if (idx !== -1) {
+      days.splice(idx, 1);
+    } else {
+      days.push(day);
+      days.sort();
+    }
+    state.data[uD].workoutDays = days;
+    savePersisted();
+    render();
+  } else if (action === "toggle-check") {
+    var u = el.dataset.user;
+    var proto = el.dataset.protocol;
+    sanitizeState();
+    state.data[u].done[proto] = !state.data[u].done[proto];
+    playRingChargeSound(u === "p2");
+    savePersisted();
+    render();
+  }
+});
+
+document.getElementById("root").addEventListener("input", function(e) {
+  var el = e.target.closest("[data-action='set-weight']");
+  if (!el) return;
+  var u = el.dataset.user;
+  sanitizeState();
+  state.data[u].weight = el.value;
+});
+
+document.getElementById("root").addEventListener("change", function(e) {
+  var el = e.target.closest("[data-action='set-weight']");
+  if (!el) return;
+  var u = el.dataset.user;
+  sanitizeState();
+  state.data[u].weight = el.value;
+  savePersisted();
+  render();
+});
+
+setInterval(render, 10000);
+initPersistence();
+</script>
+</body>
+</html>
