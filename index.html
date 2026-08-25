@@ -190,8 +190,9 @@
     background: rgba(0, 255, 136, 0.12);
   }
   .glance-day.fail {
-    color: #ff1744;
-    background: rgba(255, 23, 68, 0.12);
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
   }
   .glance-day.future {
     color: #475569;
@@ -445,9 +446,9 @@
     color: #00ff88;
   }
   .cal-cell.fail {
-    background: rgba(255, 23, 68, 0.12);
-    border-color: #ff1744;
-    color: #ff1744;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
   }
 </style>
 </head>
@@ -528,7 +529,7 @@ function defaultUserData() {
     weight: "",
     done: {},
     workoutDays: [3, 5, 0], // Wed(3), Fri(5), Sun(0)
-    trackProtein: true,
+    trackProtein: false, // Defaulted to false as requested
     goals: {
       steps: 8000,
       calories: 1800,
@@ -568,7 +569,7 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 var db = firebase.database();
-var dbRef = db.ref("green_lantern_rings_fitness_v9");
+var dbRef = db.ref("green_lantern_rings_fitness_v11");
 
 function sanitizeState() {
   if (!state.data || typeof state.data !== "object") {
@@ -582,7 +583,7 @@ function sanitizeState() {
       state.data[u].done = {};
     }
     if (state.data[u].trackProtein === undefined) {
-      state.data[u].trackProtein = true;
+      state.data[u].trackProtein = false;
     }
     if (!state.data[u].goals || typeof state.data[u].goals !== "object") {
       state.data[u].goals = { steps: 8000, calories: 1800, protein: 100 };
@@ -611,7 +612,7 @@ function evaluateDayRecord(uData, dateStr) {
   var dObj = new Date(dateStr + "T12:00:00");
   var dayOfWeek = dObj.getDay();
   var isWorkoutDay = (uData.workoutDays || []).indexOf(dayOfWeek) !== -1;
-  var hasProtein = uData.trackProtein !== false;
+  var hasProtein = uData.trackProtein === true;
 
   var sourceDone = isToday ? uData.done : (uData.history[dateStr] ? uData.history[dateStr].done || {} : {});
   var sourceWeight = isToday ? uData.weight : (uData.history[dateStr] ? uData.history[dateStr].weight : "");
@@ -795,7 +796,7 @@ function getProtocols(uData) {
     { id: "macros",   label: "Followed Plan",       type: "check", subtext: calStr, icon: "fa-solid fa-fire-flame-curved" }
   ];
 
-  if (uData.trackProtein !== false) {
+  if (uData.trackProtein === true) {
     list.push({ id: "protein", label: "Hit Protein Goals", type: "check", subtext: protStr, icon: "fa-solid fa-drumstick-bite" });
   }
 
@@ -804,7 +805,7 @@ function getProtocols(uData) {
   return list;
 }
 
-// Generates Monday through Sunday for current week
+// Generates Monday through Sunday dates for current week
 function getMondayToSundayDates() {
   var now = new Date();
   var day = now.getDay(); // 0 is Sun, 1 is Mon...
@@ -914,7 +915,7 @@ function renderExportModal() {
   html += '<div style="display:flex; gap:8px; margin-bottom:14px;">' +
     '<div class="hud-stat" style="flex:1">' +
       '<div style="font-size:10px; color:#94a3b8; text-transform:uppercase">Pass Rate</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-size:18px; font-weight:800; color:' + (passRate >= 80 ? borderAccent : '#ff1744') + '">' + passRate + '%</div>' +
+      '<div style="font-family:\'Share Tech Mono\'; font-size:18px; font-weight:800; color:' + (passRate >= 80 ? borderAccent : '#ffffff') + '">' + passRate + '%</div>' +
     '</div>' +
     '<div class="hud-stat" style="flex:1">' +
       '<div style="font-size:10px; color:#94a3b8; text-transform:uppercase">Completed Days</div>' +
@@ -934,8 +935,8 @@ function renderExportModal() {
   });
   html += '</div>';
 
-  html += '<div style="background:rgba(255,23,68,0.08); border:1px solid rgba(255,23,68,0.25); border-radius:12px; padding:12px; margin-top:14px;">' +
-    '<div style="font-size:11px; font-weight:700; color:#ff1744; text-transform:uppercase; letter-spacing:1px"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i> Greatest Consistency Drain</div>' +
+  html += '<div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.18); border-radius:12px; padding:12px; margin-top:14px;">' +
+    '<div style="font-size:11px; font-weight:700; color:#cbd5e1; text-transform:uppercase; letter-spacing:1px"><i class="fa-solid fa-chart-line" style="margin-right:6px; color:' + borderAccent + '"></i> Greatest Consistency Drain</div>' +
     '<div style="font-family:\'Share Tech Mono\'; font-size:14px; font-weight:700; color:#fff; margin-top:4px">' + bottleneckText + '</div>' +
     '<div style="font-size:11px; color:#94a3b8; margin-top:4px">Target willpower calibration towards eliminating this single metric deficiency.</div>' +
   '</div>';
@@ -957,7 +958,6 @@ function renderUserPanel(userId) {
   var activeDate = state.selectedDate[userId] || todayStr;
   var isToday = activeDate === todayStr;
 
-  // Active view evaluation
   var activeEval = evaluateDayRecord(uData, activeDate);
   var activeDoneMap = isToday ? uData.done : (uData.history[activeDate] ? uData.history[activeDate].done || {} : {});
   var activeWeight = isToday ? uData.weight : (uData.history[activeDate] ? uData.history[activeDate].weight || "" : "");
@@ -1006,7 +1006,7 @@ function renderUserPanel(userId) {
 
   // Schedule & Target Goal Drawer
   if (isSettingsOpen) {
-    var hasProteinTrack = uData.trackProtein !== false;
+    var hasProteinTrack = uData.trackProtein === true;
     html += '<div class="schedule-drawer" style="border-color:' + borderAccent + '66">' +
       '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:8px;"><i class="fa-solid fa-sliders" style="margin-right:4px"></i> Daily Target Calibration</div>' +
       
@@ -1091,13 +1091,13 @@ function renderUserPanel(userId) {
   html += '<div class="hud-stat-box">' +
     '<div class="hud-stat">' +
       '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Daily Status</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:18px; color:' + (activeEval.passed ? borderAccent : '#ff1744') + '">' +
-        (activeEval.passed ? '<i class="fa-solid fa-check"></i> COMPLETE' : '<i class="fa-solid fa-xmark"></i> INCOMPLETE') +
+      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:20px; color:' + (activeEval.passed ? borderAccent : '#ffffff') + '">' +
+        (activeEval.passed ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>') +
       '</div>' +
     '</div>' +
     '<div class="hud-stat">' +
       '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Weight</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:#fff">' + (activeWeight ? activeWeight + ' <span style="font-size:11px">lbs</span>' : '--') + '</div>' +
+      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:#fff">' + (activeWeight || '--') + '</div>' +
     '</div>' +
     '<div class="hud-stat">' +
       '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Workout Day</div>' +
@@ -1176,7 +1176,7 @@ document.getElementById("root").addEventListener("click", function(e) {
   } else if (action === "select-glance-date") {
     var uG = el.dataset.user;
     var dG = el.dataset.date;
-    if (dG > todayDateString()) return; // Prevent future selection
+    if (dG > todayDateString()) return;
     state.selectedDate[uG] = dG;
     render();
   } else if (action === "return-today") {
@@ -1190,7 +1190,7 @@ document.getElementById("root").addEventListener("click", function(e) {
   } else if (action === "toggle-protein") {
     var uP = el.dataset.user;
     sanitizeState();
-    state.data[uP].trackProtein = state.data[uP].trackProtein === false ? true : false;
+    state.data[uP].trackProtein = !state.data[uP].trackProtein;
     syncDayToHistory(uP, state.selectedDate[uP] || todayDateString());
     savePersisted();
     render();
