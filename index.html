@@ -84,29 +84,32 @@
     .wide-only { display: flex !important; }
   }
 
+  /* Corps Card with Inset Laser Rail */
   .corps-card {
     background: rgba(4, 20, 15, 0.88);
     border-radius: 18px;
-    border: 1px solid rgba(0, 255, 136, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(14px);
-    padding: 18px;
+    padding: 20px 18px 18px;
     margin-bottom: 16px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.7);
     position: relative;
     overflow: hidden;
   }
 
-  .ring-corner {
+  .corps-card::before {
+    content: "";
     position: absolute;
-    width: 10px;
-    height: 10px;
-    border-color: rgba(0, 255, 136, 0.35);
-    pointer-events: none;
+    top: 6px;
+    left: 18px;
+    right: 18px;
+    height: 2px;
+    background: var(--card-accent);
+    box-shadow: 0 0 10px var(--card-accent), 0 0 4px #ffffff;
+    border-radius: 2px;
+    opacity: 0.85;
   }
-  .rc-tl { top: 6px; left: 6px; border-top: 2px solid; border-left: 2px solid; }
-  .rc-tr { top: 6px; right: 6px; border-top: 2px solid; border-right: 2px solid; }
-  .rc-bl { bottom: 6px; left: 6px; border-bottom: 2px solid; border-left: 2px solid; }
-  .rc-br { bottom: 6px; right: 6px; border-bottom: 2px solid; border-right: 2px solid; }
 
   .lantern-btn {
     flex: 1;
@@ -556,7 +559,7 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 var db = firebase.database();
-var dbRef = db.ref("green_lantern_rings_fitness_v11");
+var dbRef = db.ref("green_lantern_rings_fitness_v12");
 
 function sanitizeState() {
   if (!state.data || typeof state.data !== "object") {
@@ -942,11 +945,10 @@ function renderUserPanel(userId) {
 
   var todayStr = todayDateString();
   var activeDate = state.selectedDate[userId] || todayStr;
-  var isToday = activeDate === todayStr;
 
   var activeEval = evaluateDayRecord(uData, activeDate);
-  var activeDoneMap = isToday ? uData.done : (uData.history[activeDate] ? uData.history[activeDate].done || {} : {});
-  var activeWeight = isToday ? uData.weight : (uData.history[activeDate] ? uData.history[activeDate].weight || "" : "");
+  var activeDoneMap = activeDate === todayStr ? uData.done : (uData.history[activeDate] ? uData.history[activeDate].done || {} : {});
+  var activeWeight = activeDate === todayStr ? uData.weight : (uData.history[activeDate] ? uData.history[activeDate].weight || "" : "");
 
   var activeDayOfWeek = new Date(activeDate + "T12:00:00").getDay();
   var isWorkoutDayForActiveDate = (uData.workoutDays || []).indexOf(activeDayOfWeek) !== -1;
@@ -954,12 +956,7 @@ function renderUserPanel(userId) {
 
   var ratio = activeEval.totalRequired > 0 ? (activeEval.completedCount / activeEval.totalRequired) : 0;
 
-  var html = '<div class="corps-card">';
-  
-  html += '<div class="ring-corner rc-tl" style="border-color:' + borderAccent + '"></div>' +
-    '<div class="ring-corner rc-tr" style="border-color:' + borderAccent + '"></div>' +
-    '<div class="ring-corner rc-bl" style="border-color:' + borderAccent + '"></div>' +
-    '<div class="ring-corner rc-br" style="border-color:' + borderAccent + '"></div>';
+  var html = '<div class="corps-card" style="--card-accent:' + borderAccent + '">';
 
   html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">' +
     '<div style="display:flex; align-items:center; gap:12px;">' +
