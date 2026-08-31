@@ -475,7 +475,38 @@
     color: #ffffff;
   }
 
-  /* Monday Reflection Debrief Section */
+  /* Monday Reflection — checklist line item (solid lantern-accent bg) */
+  .reflection-line {
+    background: var(--card-accent);
+    border: 1px solid var(--card-accent);
+    color: #041a12;
+    cursor: pointer;
+  }
+  .reflection-line .protocol-icon-box {
+    background: rgba(2, 11, 8, 0.22);
+    color: #041a12;
+  }
+  .reflection-line .reflection-line-sub {
+    color: rgba(4, 26, 18, 0.72);
+  }
+  .reflection-line:hover {
+    filter: brightness(1.08);
+  }
+  .reflection-line .check-btn {
+    border-color: rgba(4, 26, 18, 0.4);
+    color: #041a12;
+  }
+  .reflection-line.reflection-done .check-btn {
+    background: #041a12;
+    border-color: #041a12;
+    color: var(--card-accent);
+  }
+  .reflection-line .chev-icon {
+    color: rgba(4, 26, 18, 0.6);
+    font-size: 13px;
+  }
+
+  /* Monday Reflection Debrief Section (now rendered inside a modal) */
   .reflection-card {
     background: rgba(3, 18, 13, 0.96);
     border: 1px solid var(--card-accent, #00ff88);
@@ -669,6 +700,7 @@ var state = {
   },
   openSettings: { p1: false, p2: false },
   reportModal: null,
+  reflectionModal: null,
   data: {
     p1: defaultUserData(),
     p2: defaultUserData()
@@ -994,6 +1026,18 @@ function getPriorWeekDates() {
   return prevWeekDates;
 }
 
+function getPriorWeekDatesFor(mondayStr) {
+  var parts = mondayStr.split("-");
+  var mondayDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+
+  var prevWeekDates = [];
+  for (var i = 7; i >= 1; i--) {
+    var d = new Date(mondayDate.getFullYear(), mondayDate.getMonth(), mondayDate.getDate() - i);
+    prevWeekDates.push(todayDateString(d));
+  }
+  return prevWeekDates;
+}
+
 function renderWeekGlance(userId) {
   var uData = state.data[userId];
   var weekDates = getMondayToSundayDates();
@@ -1025,25 +1069,53 @@ function renderWeekGlance(userId) {
   return html;
 }
 
-function renderMondayReflection(userId) {
-  var isMonday = new Date().getDay() === 1;
-  var todayStr = todayDateString();
-  var u = USERS[userId];
+function getReflectionFor(userId, dateStr) {
   var uData = state.data[userId] || defaultUserData();
-  var borderAccent = u.accent;
-
-  var reflection = (uData.reflections && uData.reflections[todayStr]) || {
+  return (uData.reflections && uData.reflections[dateStr]) || {
     wins: "",
     tension: "",
     adjustments: "",
     completed: false
   };
+}
 
-  if (!isMonday && !reflection.completed) return "";
+// Checklist line item — sits inside the daily protocol list on Mondays,
+// opens the full reflection modal, and shows solid lantern-accent bg once filled out.
+function renderReflectionLine(userId, dateStr) {
+  var u = USERS[userId];
+  var borderAccent = u.accent;
+  var reflection = getReflectionFor(userId, dateStr);
+  var isDone = !!reflection.completed;
 
-  var prevWeekDates = getPriorWeekDates();
+  return '<div class="protocol-card reflection-line' + (isDone ? ' reflection-done' : '') + '" style="--card-accent:' + borderAccent + '" data-action="open-reflection" data-user="' + userId + '" data-date="' + dateStr + '">' +
+    '<div class="protocol-icon-box"><i class="fa-solid fa-brain"></i></div>' +
+    '<div style="flex:1">' +
+      '<div style="font-weight:700; font-size:15px">Monday Reflection</div>' +
+      '<div class="reflection-line-sub" style="font-size:11px;">' + (isDone ? 'Weekly debrief logged — tap to review' : 'Weekly debrief & willpower calibrate') + '</div>' +
+    '</div>' +
+    '<i class="fa-solid fa-chevron-right chev-icon" style="margin-right:2px;"></i>' +
+    '<div class="check-btn" style="pointer-events:none;">' +
+      (isDone ? '<i class="fa-solid fa-check"></i>' : '') +
+    '</div>' +
+  '</div>';
+}
 
-  var html = '<div class="reflection-card" style="--card-accent:' + borderAccent + '">';
+function renderReflectionModal() {
+  if (!state.reflectionModal) return "";
+  var modal = state.reflectionModal;
+  var userId = modal.user;
+  var dateStr = modal.date;
+  var u = USERS[userId];
+  var uData = state.data[userId] || defaultUserData();
+  var borderAccent = u.accent;
+
+  var reflection = getReflectionFor(userId, dateStr);
+  var prevWeekDates = getPriorWeekDatesFor(dateStr);
+
+  var dateLabel = new Date(dateStr + "T12:00:00").toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+  var html = '<div class="modal-overlay" data-action="close-reflection-overlay">' +
+    '<div class="modal-card reflection-card" style="--card-accent:' + borderAccent + '; border-color:' + borderAccent + '; margin-bottom:0;">';
 
   html += '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">' +
     '<div>' +
@@ -1051,15 +1123,15 @@ function renderMondayReflection(userId) {
         '<i class="fa-solid fa-brain" style="color:' + borderAccent + '; font-size:18px"></i>' +
         '<div style="font-family:\'Orbitron\'; font-weight:900; font-size:16px; letter-spacing:1px; color:' + borderAccent + '">MONDAY REFLECTION</div>' +
       '</div>' +
-      '<div style="font-size:11px; text-transform:uppercase; color:#94a3b8; margin-top:2px;">SECTOR 2814 WEEKLY CALIBRATE</div>' +
+      '<div style="font-size:11px; text-transform:uppercase; color:#94a3b8; margin-top:2px;">SECTOR 2814 WEEKLY CALIBRATE &middot; ' + dateLabel + '</div>' +
     '</div>' +
-    '<div class="reflection-tag">WEEKLY LOG</div>' +
+    '<button type="button" data-action="close-reflection-modal" class="settings-btn" style="border:none; font-size:16px"><i class="fa-solid fa-xmark"></i></button>' +
   '</div>';
 
   html += '<div style="margin-bottom:16px;">' +
     '<div class="q-title"><i class="fa-solid fa-trophy"></i> 1. BEHAVIORAL WINS</div>' +
     '<div class="q-sub">What behavioral wins or non-scale victories felt effortless or strong this past week?</div>' +
-    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-field="wins" placeholder="e.g., Hit 8,000 steps daily even on busy days, packed meals ahead, energy felt high during lifts...">' + (reflection.wins || '') + '</textarea>' +
+    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-date="' + dateStr + '" data-field="wins" placeholder="e.g., Hit 8,000 steps daily even on busy days, packed meals ahead, energy felt high during lifts...">' + (reflection.wins || '') + '</textarea>' +
   '</div>';
 
   html += '<div style="margin-bottom:16px;">' +
@@ -1076,13 +1148,13 @@ function renderMondayReflection(userId) {
       '</div>';
     });
   html += '</div>' +
-    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-field="tension" placeholder="e.g., Saturday dinner caused calories to slip; friction came from lack of pre-planned weekend meals...">' + (reflection.tension || '') + '</textarea>' +
+    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-date="' + dateStr + '" data-field="tension" placeholder="e.g., Saturday dinner caused calories to slip; friction came from lack of pre-planned weekend meals...">' + (reflection.tension || '') + '</textarea>' +
   '</div>';
 
   html += '<div style="margin-bottom:16px;">' +
     '<div class="q-title"><i class="fa-solid fa-arrows-rotate"></i> 3. WHAT MUST CHANGE MOVING FORWARD?</div>' +
     '<div class="q-sub">What specific operational adjustment will you execute over the next 7 days?</div>' +
-    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-field="adjustments" placeholder="e.g., Pre-log weekend meals on Friday, set out workout gear the night before...">' + (reflection.adjustments || '') + '</textarea>' +
+    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-date="' + dateStr + '" data-field="adjustments" placeholder="e.g., Pre-log weekend meals on Friday, set out workout gear the night before...">' + (reflection.adjustments || '') + '</textarea>' +
   '</div>';
 
   html += '<div class="scripture-box">' +
@@ -1091,11 +1163,11 @@ function renderMondayReflection(userId) {
     '<div style="font-size:11px; color:#94a3b8">Remember the outcome of old patterns. Walk forward with discipline.</div>' +
   '</div>';
 
-  html += '<button class="charge-btn" data-action="submit-reflection" data-user="' + userId + '" style="background:' + borderAccent + '">' +
+  html += '<button class="charge-btn" data-action="submit-reflection" data-user="' + userId + '" data-date="' + dateStr + '" style="background:' + borderAccent + '">' +
     '<i class="fa-solid fa-bolt"></i> ' + (reflection.completed ? 'UPDATE REFLECTION &amp; RECHARGE' : 'COMPLETE DEBRIEF &amp; CHARGE BATTERY') +
   '</button>';
 
-  html += '</div>';
+  html += '</div></div>';
   return html;
 }
 
@@ -1288,11 +1360,11 @@ function renderUserPanel(userId) {
     '</div>';
   }
 
-  // Monday Reflection Debrief
-  html += renderMondayReflection(userId);
-
-  // Daily Protocols
+  // Daily Protocols (Monday Reflection appears as the first line item on Mondays)
   html += '<div>';
+  if (activeDayOfWeek === 1) {
+    html += renderReflectionLine(userId, activeDate);
+  }
   protocols.forEach(function(p) {
     if (p.type === "workout_day" && !isWorkoutDayForActiveDate) {
       return;
@@ -1396,6 +1468,7 @@ function render() {
   html += '</div>';
 
   html += renderExportModal();
+  html += renderReflectionModal();
 
   html += '</div>';
   document.getElementById("root").innerHTML = html;
@@ -1460,19 +1533,33 @@ document.getElementById("root").addEventListener("click", function(e) {
       state.reportModal = null;
       render();
     }
+  } else if (action === "open-reflection") {
+    var uOpen = el.dataset.user;
+    var dOpen = el.dataset.date;
+    state.reflectionModal = { user: uOpen, date: dOpen };
+    render();
+  } else if (action === "close-reflection-modal") {
+    state.reflectionModal = null;
+    render();
+  } else if (action === "close-reflection-overlay") {
+    if (e.target.classList.contains("modal-overlay")) {
+      state.reflectionModal = null;
+      render();
+    }
   } else if (action === "submit-reflection") {
     var uRef = el.dataset.user;
-    var todayStr = todayDateString();
+    var refDate = el.dataset.date || todayDateString();
     sanitizeState();
 
-    if (!state.data[uRef].reflections[todayStr]) {
-      state.data[uRef].reflections[todayStr] = { wins: "", tension: "", adjustments: "", completed: true };
+    if (!state.data[uRef].reflections[refDate]) {
+      state.data[uRef].reflections[refDate] = { wins: "", tension: "", adjustments: "", completed: true };
     } else {
-      state.data[uRef].reflections[todayStr].completed = true;
+      state.data[uRef].reflections[refDate].completed = true;
     }
 
     playRingChargeSound(uRef === "p2");
     savePersisted();
+    state.reflectionModal = null;
     render();
   } else if (action === "toggle-check") {
     var u = el.dataset.user;
@@ -1558,13 +1645,13 @@ document.getElementById("root").addEventListener("input", function(e) {
   if (elReflect) {
     var uR = elReflect.dataset.user;
     var field = elReflect.dataset.field;
-    var todayStr = todayDateString();
+    var refDateIn = elReflect.dataset.date || todayDateString();
     sanitizeState();
 
-    if (!state.data[uR].reflections[todayStr]) {
-      state.data[uR].reflections[todayStr] = { wins: "", tension: "", adjustments: "", completed: false };
+    if (!state.data[uR].reflections[refDateIn]) {
+      state.data[uR].reflections[refDateIn] = { wins: "", tension: "", adjustments: "", completed: false };
     }
-    state.data[uR].reflections[todayStr][field] = elReflect.value;
+    state.data[uR].reflections[refDateIn][field] = elReflect.value;
   }
 });
 
