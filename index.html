@@ -1,1671 +1,198 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="theme-color" content="#020b08" />
-<title>Green Lantern Corps // Power Battery Log</title>
+// Bible Books Data Structure with Word Counts
+const BIBLE_BOOKS = [
+  // Old Testament (39)
+  { name: "Genesis", words: 38267, testament: "OT" },
+  { name: "Exodus", words: 32692, testament: "OT" },
+  { name: "Leviticus", words: 24546, testament: "OT" },
+  { name: "Numbers", words: 32902, testament: "OT" },
+  { name: "Deuteronomy", words: 28461, testament: "OT" },
+  { name: "Joshua", words: 18858, testament: "OT" },
+  { name: "Judges", words: 18976, testament: "OT" },
+  { name: "Ruth", words: 2578, testament: "OT" },
+  { name: "1 Samuel", words: 25061, testament: "OT" },
+  { name: "2 Samuel", words: 20612, testament: "OT" },
+  { name: "1 Kings", words: 24524, testament: "OT" },
+  { name: "2 Kings", words: 23532, testament: "OT" },
+  { name: "1 Chronicles", words: 20369, testament: "OT" },
+  { name: "2 Chronicles", words: 26069, testament: "OT" },
+  { name: "Ezra", words: 7441, testament: "OT" },
+  { name: "Nehemiah", words: 10483, testament: "OT" },
+  { name: "Esther", words: 5637, testament: "OT" },
+  { name: "Job", words: 18099, testament: "OT" },
+  { name: "Psalms", words: 43743, testament: "OT" },
+  { name: "Proverbs", words: 15043, testament: "OT" },
+  { name: "Ecclesiastes", words: 5584, testament: "OT" },
+  { name: "Song of Solomon", words: 2661, testament: "OT" },
+  { name: "Isaiah", words: 37042, testament: "OT" },
+  { name: "Jeremiah", words: 42659, testament: "OT" },
+  { name: "Lamentations", words: 3415, testament: "OT" },
+  { name: "Ezekiel", words: 39407, testament: "OT" },
+  { name: "Daniel", words: 11606, testament: "OT" },
+  { name: "Hosea", words: 5175, testament: "OT" },
+  { name: "Joel", words: 2034, testament: "OT" },
+  { name: "Amos", words: 4217, testament: "OT" },
+  { name: "Obadiah", words: 670, testament: "OT" },
+  { name: "Jonah", words: 1321, testament: "OT" },
+  { name: "Micah", words: 3153, testament: "OT" },
+  { name: "Nahum", words: 1285, testament: "OT" },
+  { name: "Habakkuk", words: 1476, testament: "OT" },
+  { name: "Zephaniah", words: 1617, testament: "OT" },
+  { name: "Haggai", words: 1131, testament: "OT" },
+  { name: "Zechariah", words: 6444, testament: "OT" },
+  { name: "Malachi", words: 1782, testament: "OT" },
 
-<!-- Favicons / App Icons -->
-<link rel="icon" href="favicon.ico" sizes="any" />
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
-<link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png" />
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-<link rel="mask-icon" href="safari-pinned-tab.svg" color="#00ff88" />
-<link rel="manifest" href="site.webmanifest" />
-<meta name="apple-mobile-web-app-title" content="Battery Log" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="msapplication-TileColor" content="#020b08" />
-<meta name="msapplication-TileImage" content="android-chrome-192x192.png" />
-
-<!-- Font Awesome 6 -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
-
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
-    background: #020b08;
-    color: #E2E8F0;
-    font-family: 'Rajdhani', -apple-system, sans-serif;
-    overflow-x: hidden;
-  }
-  
-  #space-bg {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    transform: translateZ(0);
-    background: 
-      radial-gradient(circle at 15% 25%, rgba(0, 255, 136, 0.14) 0%, transparent 42%),
-      radial-gradient(circle at 85% 25%, rgba(0, 229, 255, 0.12) 0%, transparent 42%),
-      radial-gradient(circle at 50% 50%, #041f17 0%, #020b08 85%);
-  }
-
-  #star-canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-  }
-  
-  #root {
-    max-width: 460px;
-    margin: 0 auto;
-    padding: 16px 16px 80px;
-    position: relative;
-    z-index: 1;
-  }
-
-  @media (min-width: 768px) {
-    #root { max-width: 1200px; padding: 24px 32px; }
-  }
-
-  /* Rhythmic Willpower Pulse Animation */
-  @keyframes lanternPulse {
-    0%, 100% {
-      opacity: var(--pulse-base-opacity, 0.4);
-      filter: drop-shadow(0 0 var(--pulse-min-blur, 3px) var(--pulse-color)) drop-shadow(0 0 calc(var(--pulse-min-blur, 3px) * 2) var(--pulse-sec-color));
-    }
-    50% {
-      opacity: var(--pulse-peak-opacity, 0.7);
-      filter: drop-shadow(0 0 var(--pulse-max-blur, 10px) var(--pulse-color)) drop-shadow(0 0 calc(var(--pulse-max-blur, 10px) * 2.2) var(--pulse-sec-color));
-    }
-  }
-
-  .pulse-lantern {
-    animation: lanternPulse 2.4s infinite ease-in-out;
-  }
-
-  .user-grid { display: block; }
-  .user-piece { display: none; }
-  .user-piece.active { display: block; }
-  .wide-only { display: none; }
-
-  @media (min-width: 768px) {
-    .user-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-    .user-piece { display: block !important; }
-    .narrow-only { display: none !important; }
-    .wide-only { display: flex !important; }
-  }
-
-  /* Corps Card with Inset Laser Rail */
-  .corps-card {
-    background: rgba(4, 20, 15, 0.88);
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(14px);
-    padding: 20px 18px 18px;
-    margin-bottom: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.7);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .corps-card::before {
-    content: "";
-    position: absolute;
-    top: 6px;
-    left: 18px;
-    right: 18px;
-    height: 2px;
-    background: var(--card-accent);
-    box-shadow: 0 0 10px var(--card-accent), 0 0 4px #ffffff;
-    border-radius: 2px;
-    opacity: 0.85;
-  }
-
-  .lantern-btn {
-    flex: 1;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(4, 28, 20, 0.7);
-    color: #fff;
-    cursor: pointer;
-    border-radius: 16px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.25s ease;
-  }
-
-  .lantern-btn.selected-p1 {
-    background: rgba(0, 255, 136, 0.16);
-    border-color: #00ff88;
-    box-shadow: 0 0 16px rgba(0, 255, 136, 0.35);
-  }
-  .lantern-btn.selected-p2 {
-    background: rgba(0, 229, 255, 0.16);
-    border-color: #00e5ff;
-    box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
-  }
-
-  .settings-btn {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 8px;
-    color: #94a3b8;
-    cursor: pointer;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-  }
-  .settings-btn:hover {
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.4);
-  }
-
-  .week-glance-row {
-    display: flex;
-    gap: 4px;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 6px;
-    margin-bottom: 12px;
-  }
-
-  .glance-day {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 5px 0;
-    border-radius: 6px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    background: rgba(255, 255, 255, 0.02);
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.15s ease;
-  }
-  .glance-day:hover:not(.future) {
-    background: rgba(255, 255, 255, 0.08);
-  }
-  .glance-day.selected {
-    border-color: #fff !important;
-    box-shadow: 0 0 8px rgba(255,255,255,0.4);
-    transform: translateY(-1px);
-  }
-  .glance-day.pass {
-    color: #00ff88;
-    background: rgba(0, 255, 136, 0.12);
-  }
-  .glance-day.fail {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-  }
-  .glance-day.future {
-    color: #475569;
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-
-  /* Historical View Indicator Banner */
-  .history-banner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px dashed rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 6px 12px;
-    margin-bottom: 12px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    color: #cbd5e1;
-  }
-
-  .history-reset-btn {
-    background: transparent;
-    border: 1px solid var(--card-accent, #00ff88);
-    color: var(--card-accent, #00ff88);
-    border-radius: 4px;
-    padding: 2px 8px;
-    font-size: 10px;
-    font-family: 'Orbitron', monospace;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .history-reset-btn:hover {
-    background: var(--card-accent, #00ff88);
-    color: #020b08;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .day-chip {
-    flex: 1;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.03);
-    color: #94a3b8;
-    border-radius: 6px;
-    padding: 6px 0;
-    font-size: 11px;
-    font-family: 'Orbitron', monospace;
-    font-weight: 700;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.15s ease;
-  }
-
-  .goal-input-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .goal-setting-input {
-    background: rgba(0,0,0,0.6);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 6px;
-    color: #fff;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 13px;
-    padding: 5px 8px;
-    width: 90px;
-    text-align: right;
-    outline: none;
-  }
-  .goal-setting-input:focus {
-    border-color: #00ff88;
-  }
-
-  .toggle-switch-btn {
-    border: 1px solid rgba(255,255,255,0.18);
-    background: rgba(255,255,255,0.05);
-    border-radius: 14px;
-    width: 44px;
-    height: 22px;
-    padding: 2px;
-    cursor: pointer;
-    position: relative;
-    transition: all 0.2s ease;
-  }
-  .toggle-knob {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #94a3b8;
-    transition: all 0.2s ease;
-    display: block;
-  }
-  .toggle-switch-btn.on {
-    background: rgba(0, 255, 136, 0.25);
-    border-color: #00ff88;
-  }
-  .toggle-switch-btn.on .toggle-knob {
-    background: #00ff88;
-    transform: translateX(22px);
-    box-shadow: 0 0 6px #00ff88;
-  }
-
-  .export-btn {
-    flex: 1;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #e2e8f0;
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-family: 'Orbitron', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: all 0.15s ease;
-  }
-  .export-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-  }
-
-  .protocol-card {
-    background: rgba(6, 26, 19, 0.6);
-    border: 1px solid rgba(0, 255, 136, 0.1);
-    border-radius: 14px;
-    padding: 14px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 10px;
-    transition: all 0.2s ease;
-  }
-  .protocol-card.completed-p1 {
-    background: rgba(0, 255, 136, 0.15);
-    border-color: #00ff88;
-    box-shadow: inset 0 0 12px rgba(0, 255, 136, 0.25);
-  }
-  .protocol-card.completed-p2 {
-    background: rgba(0, 229, 255, 0.15);
-    border-color: #00e5ff;
-    box-shadow: inset 0 0 12px rgba(0, 229, 255, 0.25);
-  }
-
-  .protocol-icon-box {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: rgba(0, 255, 136, 0.06);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 15px;
-    flex-shrink: 0;
-    color: #6EE7B7;
-  }
-
-  .check-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: 2px solid rgba(0, 255, 136, 0.3);
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 13px;
-    transition: all 0.2s ease;
-  }
-
-  .hud-stat-box {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-top: 14px;
-  }
-  .hud-stat {
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(0, 255, 136, 0.12);
-    border-radius: 10px;
-    padding: 8px 10px;
-    text-align: center;
-  }
-
-  .val-input {
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid rgba(0, 255, 136, 0.4);
-    color: #fff;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 16px;
-    text-align: center;
-    width: 100%;
-    outline: none;
-  }
-
-  .header-clock {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 32px;
-    font-weight: 800;
-    letter-spacing: 2px;
-    text-shadow: 0 0 12px rgba(0, 255, 136, 0.6);
-  }
-
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(8px);
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-  }
-  .modal-card {
-    background: #04140f;
-    border-radius: 20px;
-    border: 1px solid rgba(0, 255, 136, 0.3);
-    width: 100%;
-    max-width: 480px;
-    max-height: 90vh;
-    overflow-y: auto;
-    padding: 20px;
-    box-shadow: 0 16px 40px rgba(0,0,0,0.8);
-    position: relative;
-  }
-
-  .cal-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-    margin: 12px 0;
-  }
-  .cal-cell {
-    aspect-ratio: 1;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    border: 1px solid rgba(255,255,255,0.08);
-  }
-  .cal-cell.pass {
-    background: rgba(0, 255, 136, 0.15);
-    border-color: #00ff88;
-    color: #00ff88;
-  }
-  .cal-cell.fail {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: #ffffff;
-  }
-
-  /* Monday Reflection — checklist line item (solid lantern-accent bg) */
-  .reflection-line {
-    background: var(--card-accent);
-    border: 1px solid var(--card-accent);
-    color: #041a12;
-    cursor: pointer;
-  }
-  .reflection-line .protocol-icon-box {
-    background: rgba(2, 11, 8, 0.22);
-    color: #041a12;
-  }
-  .reflection-line .reflection-line-sub {
-    color: rgba(4, 26, 18, 0.72);
-  }
-  .reflection-line:hover {
-    filter: brightness(1.08);
-  }
-  .reflection-line .check-btn {
-    border-color: rgba(4, 26, 18, 0.4);
-    color: #041a12;
-  }
-  .reflection-line.reflection-done .check-btn {
-    background: #041a12;
-    border-color: #041a12;
-    color: var(--card-accent);
-  }
-  .reflection-line .chev-icon {
-    color: rgba(4, 26, 18, 0.6);
-    font-size: 13px;
-  }
-
-  /* Monday Reflection Debrief Section (rendered inside a modal) */
-  .reflection-card {
-    background: rgba(3, 18, 13, 0.96);
-    border: 1px solid var(--card-accent, #00ff88);
-    box-shadow: 0 0 25px rgba(0, 255, 136, 0.15);
-    border-radius: 20px;
-    padding: 20px 18px;
-    margin-bottom: 20px;
-  }
-
-  .q-title {
-    font-family: 'Orbitron', monospace;
-    font-weight: 800;
-    font-size: 12px;
-    letter-spacing: 1px;
-    color: var(--card-accent, #00ff88);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
-  }
-
-  .q-sub {
-    font-size: 12px;
-    color: #94a3b8;
-    margin-bottom: 8px;
-    line-height: 1.35;
-  }
-
-  .reflection-textarea {
-    width: 100%;
-    background: rgba(0, 0, 0, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 10px;
-    padding: 10px 12px;
-    color: #e2e8f0;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    resize: vertical;
-    min-height: 64px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .reflection-textarea:focus {
-    border-color: var(--card-accent, #00ff88);
-    box-shadow: 0 0 8px rgba(0, 255, 136, 0.2);
-  }
-
-  .scripture-box {
-    background: rgba(0, 20, 14, 0.7);
-    border: 1px solid rgba(0, 255, 136, 0.22);
-    border-radius: 12px;
-    padding: 12px 14px;
-    margin: 16px 0;
-    text-align: center;
-  }
-
-  .charge-btn {
-    width: 100%;
-    background: var(--card-accent, #00ff88);
-    color: #020b08;
-    border: none;
-    border-radius: 12px;
-    padding: 14px;
-    font-family: 'Orbitron', monospace;
-    font-weight: 900;
-    font-size: 13px;
-    letter-spacing: 1px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
-    transition: all 0.2s ease;
-  }
-  .charge-btn:hover {
-    filter: brightness(1.15);
-    box-shadow: 0 0 28px rgba(0, 255, 136, 0.65);
-  }
-</style>
-</head>
-<body>
-
-<div id="space-bg">
-  <canvas id="star-canvas"></canvas>
-</div>
-<div id="root"></div>
-
-<script>
-"use strict";
-
-var DAYS_OF_WEEK = [
-  { label: "Mon", jsDay: 1 },
-  { label: "Tue", jsDay: 2 },
-  { label: "Wed", jsDay: 3 },
-  { label: "Thu", jsDay: 4 },
-  { label: "Fri", jsDay: 5 },
-  { label: "Sat", jsDay: 6 },
-  { label: "Sun", jsDay: 0 }
+  // New Testament (27)
+  { name: "Matthew", words: 23684, testament: "NT" },
+  { name: "Mark", words: 15171, testament: "NT" },
+  { name: "Luke", words: 25944, testament: "NT" },
+  { name: "John", words: 19099, testament: "NT" },
+  { name: "Acts", words: 24250, testament: "NT" },
+  { name: "Romans", words: 9441, testament: "NT" },
+  { name: "1 Corinthians", words: 9480, testament: "NT" },
+  { name: "2 Corinthians", words: 6098, testament: "NT" },
+  { name: "Galatians", words: 3084, testament: "NT" },
+  { name: "Ephesians", words: 3039, testament: "NT" },
+  { name: "Philippians", words: 2183, testament: "NT" },
+  { name: "Colossians", words: 1979, testament: "NT" },
+  { name: "1 Thessalonians", words: 1837, testament: "NT" },
+  { name: "2 Thessalonians", words: 1022, testament: "NT" },
+  { name: "1 Timothy", words: 2269, testament: "NT" },
+  { name: "2 Timothy", words: 1703, testament: "NT" },
+  { name: "Titus", words: 922, testament: "NT" },
+  { name: "Philemon", words: 430, testament: "NT" },
+  { name: "Hebrews", words: 6913, testament: "NT" },
+  { name: "James", words: 2309, testament: "NT" },
+  { name: "1 Peter", words: 2482, testament: "NT" },
+  { name: "2 Peter", words: 1559, testament: "NT" },
+  { name: "1 John", words: 2523, testament: "NT" },
+  { name: "2 John", words: 298, testament: "NT" },
+  { name: "3 John", words: 294, testament: "NT" },
+  { name: "Jude", words: 608, testament: "NT" },
+  { name: "Revelation", words: 12000, testament: "NT" }
 ];
 
-var USERS = {
-  p1: {
-    id: "p1",
-    callsign: "Lantern 0104",
-    role: "Sector 2814 Protocol",
-    accent: "#00ff88",
-    secondary: "#00cc66"
-  },
-  p2: {
-    id: "p2",
-    callsign: "Lantern 0211",
-    role: "Sector 2814 Protocol",
-    accent: "#00e5ff",
-    secondary: "#00b4d8"
-  }
-};
+const TOTAL_WORDS = BIBLE_BOOKS.reduce((sum, b) => sum + b.words, 0);
 
-function todayDateString(dateObj) {
-  var d = dateObj || new Date();
-  var year = d.getFullYear();
-  var month = String(d.getMonth() + 1).padStart(2, '0');
-  var day = String(d.getDate()).padStart(2, '0');
-  return year + "-" + month + "-" + day;
+// Single Ring Dimensions
+const INNER_RADIUS = 280;
+const OUTER_RADIUS = 340;
+
+const COLOR_PALETTE = [
+  "#b882cf", "#ad7bcc", "#a174ca", "#966ec7",
+  "#8a69c4", "#806cb7", "#7d78a8", "#7a849a"
+];
+
+const booksGroup = document.getElementById("books-group");
+const tooltip = document.getElementById("tooltip");
+const bookElements = [];
+
+// Helper to construct circular arc shapes
+function createArcPath(innerR, outerR, startAngleDeg, endAngleDeg) {
+  const gap = 0.35;
+  const adjustedStart = startAngleDeg + gap;
+  const adjustedEnd = Math.max(adjustedStart + 0.05, endAngleDeg - gap);
+
+  const toRad = deg => (deg - 90) * (Math.PI / 180);
+  const a1 = toRad(adjustedStart);
+  const a2 = toRad(adjustedEnd);
+
+  const x1 = outerR * Math.cos(a1);
+  const y1 = outerR * Math.sin(a1);
+  const x2 = outerR * Math.cos(a2);
+  const y2 = outerR * Math.sin(a2);
+  const x3 = innerR * Math.cos(a2);
+  const y3 = innerR * Math.sin(a2);
+  const x4 = innerR * Math.cos(a1);
+  const y4 = innerR * Math.sin(a1);
+
+  const largeArc = (adjustedEnd - adjustedStart) > 180 ? 1 : 0;
+
+  return `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4} ${y4} Z`;
 }
 
-function getDynamicRingStyle(ratio, accent, secondary) {
-  var baseOpacity = 0.35 + (ratio * 0.55);
-  var peakOpacity = 0.6 + (ratio * 0.4);
-  var minBlur = Math.max(2, Math.round(2 + ratio * 8));
-  var maxBlur = Math.max(6, Math.round(6 + ratio * 20));
+// Render Wheel Elements
+function buildWheel() {
+  booksGroup.innerHTML = "";
+  bookElements.length = 0;
+  let currentAngle = 0;
 
-  return '--pulse-color: ' + accent + '; ' +
-         '--pulse-sec-color: ' + secondary + '; ' +
-         '--pulse-base-opacity: ' + baseOpacity.toFixed(2) + '; ' +
-         '--pulse-peak-opacity: ' + peakOpacity.toFixed(2) + '; ' +
-         '--pulse-min-blur: ' + minBlur + 'px; ' +
-         '--pulse-max-blur: ' + maxBlur + 'px;';
-}
+  BIBLE_BOOKS.forEach((book) => {
+    const percentage = (book.words / TOTAL_WORDS) * 100;
+    const arcAngle = (book.words / TOTAL_WORDS) * 360;
 
-function greenLanternRingSvg(accent, ratio) {
-  if (ratio === undefined) ratio = 0;
-  var centerOpacity = (0.2 + (ratio * 0.8)).toFixed(2);
-  var coreDotSize = 2 + (ratio * 4.5);
+    const startAngle = currentAngle;
+    const endAngle = startAngle + arcAngle;
+    currentAngle = endAngle;
 
-  return '<svg width="44" height="44" viewBox="0 0 100 100" fill="none">' +
-    '<circle cx="50" cy="50" r="45" stroke="' + accent + '" stroke-width="3" fill="#03160f" fill-opacity="0.6"/>' +
-    '<circle cx="50" cy="50" r="36" stroke="' + accent + '" stroke-width="2" stroke-dasharray="4 2" opacity="' + (0.3 + ratio * 0.7).toFixed(2) + '"/>' +
-    '<rect x="26" y="24" width="48" height="6.5" rx="3" fill="' + accent + '"/>' +
-    '<rect x="26" y="69.5" width="48" height="6.5" rx="3" fill="' + accent + '"/>' +
-    '<circle cx="50" cy="50" r="23" stroke="' + accent + '" stroke-width="6.5" fill="none"/>' +
-    '<circle cx="50" cy="50" r="10" fill="' + accent + '" fill-opacity="' + centerOpacity + '"/>' +
-    '<circle cx="50" cy="50" r="' + coreDotSize.toFixed(1) + '" fill="#FFFFFF" fill-opacity="' + (0.4 + ratio * 0.6).toFixed(2) + '"/>' +
-  '</svg>';
-}
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const d = createArcPath(INNER_RADIUS, OUTER_RADIUS, startAngle, endAngle);
 
-function defaultUserData() {
-  return {
-    weight: "",
-    done: {},
-    workoutDays: [], // Default set to 0 days
-    trackProtein: false,
-    goals: {
-      steps: 8000,
-      calories: 1800,
-      protein: 100
-    },
-    history: {},
-    reflections: {}
-  };
-}
+    path.setAttribute("d", d);
+    path.setAttribute("class", "book-block");
 
-var state = {
-  activeTab: "p1",
-  selectedDate: {
-    p1: todayDateString(),
-    p2: todayDateString()
-  },
-  settingsModalUser: null, // Modal active user state
-  reportModal: null,
-  reflectionModal: null,
-  data: {
-    p1: defaultUserData(),
-    p2: defaultUserData()
-  },
-  lastActiveDate: null
-};
+    const paletteIndex = (startAngle / 360) * (COLOR_PALETTE.length - 1);
+    const baseIndex = Math.floor(paletteIndex);
+    path.setAttribute("fill", COLOR_PALETTE[baseIndex]);
+    path.setAttribute("opacity", "0.9");
 
-/* ---------------- Persistence ---------------- */
-var firebaseConfig = {
-  apiKey: "AIzaSyDMxcuNZmdic9AZIL5uQwvGdxKnGW2Uq_c",
-  authDomain: "bao-buddy.firebaseapp.com",
-  databaseURL: "https://bao-buddy-default-rtdb.firebaseio.com",
-  projectId: "bao-buddy",
-  storageBucket: "bao-buddy.firebasestorage.app",
-  messagingSenderId: "167816448505",
-  appId: "1:167816448505:web:35d57633f3caea0ba71528"
-};
-
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-var db = firebase.database();
-var dbRef = db.ref("green_lantern_rings_fitness_v12");
-
-function sanitizeState() {
-  if (!state.data || typeof state.data !== "object") {
-    state.data = {};
-  }
-  Object.keys(USERS).forEach(function(u) {
-    if (!state.data[u] || typeof state.data[u] !== "object") {
-      state.data[u] = defaultUserData();
-    }
-    if (!state.data[u].done || typeof state.data[u].done !== "object") {
-      state.data[u].done = {};
-    }
-    if (state.data[u].trackProtein === undefined) {
-      state.data[u].trackProtein = false;
-    }
-    if (!state.data[u].goals || typeof state.data[u].goals !== "object") {
-      state.data[u].goals = { steps: 8000, calories: 1800, protein: 100 };
-    }
-    if (!state.data[u].goals.steps) state.data[u].goals.steps = 8000;
-    if (!state.data[u].goals.calories) state.data[u].goals.calories = 1800;
-    if (!state.data[u].goals.protein) state.data[u].goals.protein = 100;
-
-    if (!state.data[u].history || typeof state.data[u].history !== "object") {
-      state.data[u].history = {};
-    }
-    
-    // Ensure all historical entries have reliable properties
-    Object.keys(state.data[u].history).forEach(function(dKey) {
-      if (!state.data[u].history[dKey] || typeof state.data[u].history[dKey] !== "object") {
-        state.data[u].history[dKey] = { done: {}, weight: "" };
-      }
-      if (!state.data[u].history[dKey].done || typeof state.data[u].history[dKey].done !== "object") {
-        state.data[u].history[dKey].done = {};
-      }
-      if (state.data[u].history[dKey].weight === undefined) {
-        state.data[u].history[dKey].weight = "";
-      }
+    // Tooltip
+    path.addEventListener("mousemove", (e) => {
+      tooltip.style.opacity = "1";
+      tooltip.style.left = e.pageX + "px";
+      tooltip.style.top = e.pageY + "px";
+      tooltip.innerHTML = `<strong>${book.name}</strong><br>${percentage.toFixed(2)}% (${book.words.toLocaleString()} words)`;
     });
 
-    if (!state.data[u].reflections || typeof state.data[u].reflections !== "object") {
-      state.data[u].reflections = {};
-    }
-    if (!Array.isArray(state.data[u].workoutDays)) {
-      state.data[u].workoutDays = []; // Default fallback set to 0 days
-    }
-    if (state.data[u].weight === undefined) {
-      state.data[u].weight = "";
-    }
-    if (!state.selectedDate[u]) {
-      state.selectedDate[u] = todayDateString();
-    }
+    path.addEventListener("mouseleave", () => {
+      tooltip.style.opacity = "0";
+    });
+
+    booksGroup.appendChild(path);
+    bookElements.push({ element: path, midAngle: (startAngle + endAngle) / 2 });
   });
 }
 
-function evaluateDayRecord(uData, dateStr) {
-  var isToday = dateStr === todayDateString();
-  var dObj = new Date(dateStr + "T12:00:00");
-  var dayOfWeek = dObj.getDay();
-  var isWorkoutDay = (uData.workoutDays || []).indexOf(dayOfWeek) !== -1;
-  var hasProtein = uData.trackProtein === true;
+// GSAP Flying Intro Animation
+function animateIntro() {
+  bookElements.forEach(({ element, midAngle }) => {
+    const distance = 650 + Math.random() * 350;
+    const spreadAngle = (midAngle + (Math.random() * 40 - 20)) * (Math.PI / 180);
 
-  var sourceDone = isToday ? (uData.done || {}) : (uData.history[dateStr] ? (uData.history[dateStr].done || {}) : {});
-  var sourceWeight = isToday ? uData.weight : (uData.history[dateStr] ? uData.history[dateStr].weight : "");
+    const startX = Math.cos(spreadAngle) * distance;
+    const startY = Math.sin(spreadAngle) * distance;
+    const startRotation = Math.random() * 360 - 180;
 
-  var required = ["steps", "macros"];
-  if (hasProtein) required.push("protein");
-  if (isWorkoutDay) required.push("workout");
-
-  var missed = [];
-  required.forEach(function(reqId) {
-    if (!sourceDone[reqId]) missed.push(reqId);
-  });
-
-  var hasWeight = sourceWeight !== undefined && String(sourceWeight).trim() !== "";
-  if (!hasWeight) missed.push("weight");
-
-  var passed = missed.length === 0;
-
-  return {
-    done: Object.assign({}, sourceDone),
-    weight: sourceWeight || "",
-    passed: passed,
-    missed: missed,
-    isWorkoutDay: isWorkoutDay,
-    totalRequired: required.length + 1,
-    completedCount: (required.length + 1) - missed.length
-  };
-}
-
-function syncDayToHistory(userId, dateStr) {
-  var uData = state.data[userId];
-  var evalResult = evaluateDayRecord(uData, dateStr);
-  if (!uData.history[dateStr]) {
-    uData.history[dateStr] = { done: {}, weight: "" };
-  }
-  uData.history[dateStr].done = Object.assign({}, evalResult.done);
-  uData.history[dateStr].weight = evalResult.weight;
-  uData.history[dateStr].passed = evalResult.passed;
-  uData.history[dateStr].missed = evalResult.missed;
-  uData.history[dateStr].isWorkoutDay = evalResult.isWorkoutDay;
-  uData.history[dateStr].totalRequired = evalResult.totalRequired;
-  uData.history[dateStr].completedCount = evalResult.completedCount;
-}
-
-function savePersisted() {
-  sanitizeState();
-  dbRef.set({
-    data: state.data,
-    lastActiveDate: state.lastActiveDate
-  });
-}
-
-function initPersistence() {
-  dbRef.on("value", function (snapshot) {
-    var saved = snapshot.val();
-    var today = todayDateString();
-
-    if (saved) {
-      if (saved.data) state.data = saved.data;
-      if (saved.lastActiveDate) state.lastActiveDate = saved.lastActiveDate;
-    }
-
-    sanitizeState();
-
-    if (state.lastActiveDate && state.lastActiveDate !== today) {
-      Object.keys(USERS).forEach(function(u) {
-        syncDayToHistory(u, state.lastActiveDate);
-        state.data[u].done = {};
-        state.data[u].weight = "";
-        state.selectedDate[u] = today;
-      });
-      state.lastActiveDate = today;
-      savePersisted();
-    } else if (!state.lastActiveDate) {
-      state.lastActiveDate = today;
-      savePersisted();
-    }
-    
-    var activeEl = document.activeElement;
-    if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA")) {
-      return;
-    }
-    render();
-  });
-}
-
-/* ---------------- Canvas Starfield & Audio ---------------- */
-(function initStarfield() {
-  var canvas = document.getElementById("star-canvas");
-  var ctx = canvas.getContext("2d");
-  var width, height;
-  var STAR_COUNT = 130;
-  var stars = [];
-
-  function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-  }
-
-  function createStar() {
-    return {
-      x: Math.random() * width,
-      y: Math.random() * height,
-      size: Math.random() * 1.6 + 0.4,
-      alpha: Math.random() * 0.8 + 0.2,
-      speed: Math.random() * 0.016 + 0.005,
-      direction: Math.random() > 0.5 ? 1 : -1
-    };
-  }
-
-  function init() {
-    resize();
-    stars.length = 0;
-    for (var i = 0; i < STAR_COUNT; i++) {
-      stars.push(createStar());
-    }
-  }
-
-  function animate() {
-    ctx.clearRect(0, 0, width, height);
-
-    for (var i = 0; i < stars.length; i++) {
-      var s = stars[i];
-      s.alpha += s.speed * s.direction;
-
-      if (s.alpha >= 1) {
-        s.alpha = 1;
-        s.direction = -1;
-      } else if (s.alpha <= 0.1) {
-        s.alpha = 0.1;
-        s.direction = 1;
-      }
-
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-
-      if (s.x < width * 0.35) {
-        ctx.fillStyle = "rgba(0, 255, 136, " + (s.alpha * 0.85) + ")";
-      } else if (s.x > width * 0.65) {
-        ctx.fillStyle = "rgba(0, 229, 255, " + (s.alpha * 0.85) + ")";
-      } else {
-        ctx.fillStyle = "rgba(255, 255, 255, " + s.alpha + ")";
-      }
-
-      ctx.fill();
-    }
-
-    requestAnimationFrame(animate);
-  }
-
-  window.addEventListener("resize", function() {
-    resize();
-    stars.forEach(function(s) {
-      s.x = Math.random() * width;
-      s.y = Math.random() * height;
+    gsap.set(element, {
+      x: startX,
+      y: startY,
+      rotation: startRotation,
+      scale: 0.2,
+      opacity: 0
     });
   });
 
-  init();
-  animate();
-})();
-
-function playRingChargeSound(isP2) {
-  try {
-    var AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    var ctx = new AudioContext();
-    if (ctx.state === "suspended") {
-      ctx.resume().catch(function(){});
-    }
-    var osc = ctx.createOscillator();
-    var gain = ctx.createGain();
-    
-    osc.type = "sine";
-    var startFreq = isP2 ? 440 : 523.25;
-    var peakFreq = isP2 ? 880 : 1046.5;
-    
-    var t = ctx.currentTime;
-    osc.frequency.setValueAtTime(startFreq, t);
-    osc.frequency.exponentialRampToValueAtTime(peakFreq, t + 0.12);
-    
-    gain.gain.setValueAtTime(0.001, t);
-    gain.gain.linearRampToValueAtTime(0.15, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.35);
-  } catch(e) {}
-}
-
-/* ---------------- Render Helpers ---------------- */
-function getProtocols(uData) {
-  var goals = uData.goals;
-  var stepStr = Number(goals.steps).toLocaleString() + " steps";
-  var calStr = "Under " + Number(goals.calories).toLocaleString() + " kcal";
-  var protStr = Number(goals.protein) + "g+ protein";
-
-  var list = [
-    { id: "weight",   label: "Tracked Weight",      type: "input", subtext: "Daily weigh in", icon: "fa-solid fa-weight-scale" },
-    { id: "steps",    label: "Hit Steps",           type: "check", subtext: stepStr, icon: "fa-solid fa-person-walking" },
-    { id: "macros",   label: "Followed Plan",       type: "check", subtext: calStr, icon: "fa-solid fa-fire-flame-curved" }
-  ];
-
-  if (uData.trackProtein === true) {
-    list.push({ id: "protein", label: "Hit Protein Goals", type: "check", subtext: protStr, icon: "fa-solid fa-drumstick-bite" });
-  }
-
-  list.push({ id: "workout", label: "Completed Workout", type: "workout_day", subtext: "Scheduled workout session", icon: "fa-solid fa-dumbbell" });
-
-  return list;
-}
-
-function getMondayToSundayDates() {
-  var now = new Date();
-  var day = now.getDay();
-  var diffToMon = (day === 0 ? -6 : 1) - day;
-  var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon);
-
-  var dates = [];
-  for (var i = 0; i < 7; i++) {
-    var d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
-    dates.push(todayDateString(d));
-  }
-  return dates;
-}
-
-function getPriorWeekDatesFor(mondayStr) {
-  var parts = mondayStr.split("-");
-  var mondayDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-
-  var prevWeekDates = [];
-  for (var i = 7; i >= 1; i--) {
-    var d = new Date(mondayDate.getFullYear(), mondayDate.getMonth(), mondayDate.getDate() - i);
-    prevWeekDates.push(todayDateString(d));
-  }
-  return prevWeekDates;
-}
-
-function renderWeekGlance(userId) {
-  var uData = state.data[userId];
-  var weekDates = getMondayToSundayDates();
-  var todayStr = todayDateString();
-  var selected = state.selectedDate[userId] || todayStr;
-
-  var html = '<div class="week-glance-row">';
-  weekDates.forEach(function(dateStr, idx) {
-    var isFuture = dateStr > todayStr;
-    var isSelected = dateStr === selected;
-    var dayEval = evaluateDayRecord(uData, dateStr);
-
-    var dayStatusClass = isFuture ? "future" : (dayEval.passed ? "pass" : "fail");
-    if (isSelected) dayStatusClass += " selected";
-
-    var icon = '<i class="fa-regular fa-circle" style="font-size:9px; opacity:0.3"></i>';
-    if (!isFuture) {
-      icon = dayEval.passed ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>';
-    }
-
-    var dayLetter = DAYS_OF_WEEK[idx].label;
-
-    html += '<div class="glance-day ' + dayStatusClass + '" data-action="select-glance-date" data-user="' + userId + '" data-date="' + dateStr + '">' +
-      '<span style="font-size:9px; opacity:0.8; margin-bottom:2px">' + dayLetter + '</span>' +
-      icon +
-    '</div>';
-  });
-  html += '</div>';
-  return html;
-}
-
-function getReflectionFor(userId, dateStr) {
-  var uData = state.data[userId] || defaultUserData();
-  return (uData.reflections && uData.reflections[dateStr]) || {
-    wins: "",
-    tension: "",
-    adjustments: "",
-    completed: false
-  };
-}
-
-function renderReflectionLine(userId, dateStr) {
-  var u = USERS[userId];
-  var borderAccent = u.accent;
-  var reflection = getReflectionFor(userId, dateStr);
-  var isDone = !!reflection.completed;
-
-  return '<div class="protocol-card reflection-line' + (isDone ? ' reflection-done' : '') + '" style="--card-accent:' + borderAccent + '" data-action="open-reflection" data-user="' + userId + '" data-date="' + dateStr + '">' +
-    '<div class="protocol-icon-box"><i class="fa-solid fa-brain"></i></div>' +
-    '<div style="flex:1">' +
-      '<div style="font-weight:700; font-size:15px">Monday Reflection</div>' +
-      '<div class="reflection-line-sub" style="font-size:11px;">' + (isDone ? 'Weekly debrief logged — tap to review' : 'Weekly debrief & willpower calibrate') + '</div>' +
-    '</div>' +
-    '<i class="fa-solid fa-chevron-right chev-icon" style="margin-right:2px;"></i>' +
-    '<div class="check-btn" style="pointer-events:none;">' +
-      (isDone ? '<i class="fa-solid fa-check"></i>' : '') +
-    '</div>' +
-  '</div>';
-}
-
-function renderSettingsModal() {
-  if (!state.settingsModalUser) return "";
-  var userId = state.settingsModalUser;
-  var u = USERS[userId];
-  var uData = state.data[userId] || defaultUserData();
-  var borderAccent = u.accent;
-  var hasProteinTrack = uData.trackProtein === true;
-
-  var html = '<div class="modal-overlay" data-action="close-settings-overlay">' +
-    '<div class="modal-card" style="border-color:' + borderAccent + '">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">' +
-        '<div>' +
-          '<div style="font-family:\'Orbitron\'; font-weight:900; font-size:18px; color:' + borderAccent + '">' + u.callsign + ' // Settings</div>' +
-          '<div style="font-size:11px; text-transform:uppercase; color:#94a3b8">Target Calibration</div>' +
-        '</div>' +
-        '<button type="button" data-action="close-settings-modal" class="settings-btn" style="border:none; font-size:16px"><i class="fa-solid fa-xmark"></i></button>' +
-      '</div>';
-
-  html += '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:8px;"><i class="fa-solid fa-sliders" style="margin-right:4px"></i> Daily Target Calibration</div>' +
-    
-    '<div class="goal-input-row">' +
-      '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-person-walking" style="width:16px"></i> Daily Steps:</span>' +
-      '<input type="number" step="500" class="goal-setting-input" value="' + uData.goals.steps + '" data-action="set-goal" data-user="' + userId + '" data-metric="steps" />' +
-    '</div>' +
-
-    '<div class="goal-input-row">' +
-      '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-fire-flame-curved" style="width:16px"></i> Max Calories:</span>' +
-      '<input type="number" step="50" class="goal-setting-input" value="' + uData.goals.calories + '" data-action="set-goal" data-user="' + userId + '" data-metric="calories" />' +
-    '</div>' +
-
-    '<div class="goal-input-row">' +
-      '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-drumstick-bite" style="width:16px"></i> Track Protein:</span>' +
-      '<button class="toggle-switch-btn ' + (hasProteinTrack ? 'on' : '') + '" data-action="toggle-protein" data-user="' + userId + '"><span class="toggle-knob"></span></button>' +
-    '</div>';
-
-    if (hasProteinTrack) {
-      html += '<div class="goal-input-row" style="margin-top:-4px; margin-bottom:14px; padding-left:20px;">' +
-        '<span style="font-size:11px; color:#94a3b8">Protein Goal (g):</span>' +
-        '<input type="number" step="5" class="goal-setting-input" value="' + uData.goals.protein + '" data-action="set-goal" data-user="' + userId + '" data-metric="protein" />' +
-      '</div>';
-    } else {
-      html += '<div style="margin-bottom:10px;"></div>';
-    }
-
-    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; margin-top:14px;">' +
-      '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '"><i class="fa-regular fa-calendar-check" style="margin-right:4px"></i> Active Workout Days</div>' +
-      '<div style="font-size:10px; color:#94a3b8">' + (uData.workoutDays || []).length + ' selected (Can be 0)</div>' +
-    '</div>' +
-    '<div style="display:flex; gap:4px; margin-bottom:18px;">';
-    DAYS_OF_WEEK.forEach(function(dayObj) {
-      var isSelected = (uData.workoutDays || []).indexOf(dayObj.jsDay) !== -1;
-      html += '<button class="day-chip" data-action="toggle-day" data-user="' + userId + '" data-day="' + dayObj.jsDay + '" style="' + (isSelected ? 'background:' + borderAccent + '; color:#020b08; border-color:' + borderAccent + '; box-shadow:0 0 8px ' + borderAccent + '88;' : '') + '">' +
-        dayObj.label +
-      '</button>';
-    });
-  html += '</div>' +
-
-    '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:6px;"><i class="fa-solid fa-file-export" style="margin-right:4px"></i> Export Success History</div>' +
-    '<div style="display:flex; gap:8px;">' +
-      '<button class="export-btn" data-action="export-log" data-user="' + userId + '" data-days="7"><i class="fa-solid fa-chart-simple"></i> Last 7 Days</button>' +
-      '<button class="export-btn" data-action="export-log" data-user="' + userId + '" data-days="30"><i class="fa-solid fa-calendar-check"></i> Last 30 Days</button>' +
-    '</div>';
-
-  html += '</div></div>';
-  return html;
-}
-
-function renderReflectionModal() {
-  if (!state.reflectionModal) return "";
-  var modal = state.reflectionModal;
-  var userId = modal.user;
-  var dateStr = modal.date;
-  var u = USERS[userId];
-  var uData = state.data[userId] || defaultUserData();
-  var borderAccent = u.accent;
-
-  var reflection = getReflectionFor(userId, dateStr);
-  var prevWeekDates = getPriorWeekDatesFor(dateStr);
-
-  var dateLabel = new Date(dateStr + "T12:00:00").toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-
-  var html = '<div class="modal-overlay" data-action="close-reflection-overlay">' +
-    '<div class="modal-card reflection-card" style="--card-accent:' + borderAccent + '; border-color:' + borderAccent + '; margin-bottom:0;">';
-
-  html += '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">' +
-    '<div>' +
-      '<div style="display:flex; align-items:center; gap:8px;">' +
-        '<i class="fa-solid fa-brain" style="color:' + borderAccent + '; font-size:18px"></i>' +
-        '<div style="font-family:\'Orbitron\'; font-weight:900; font-size:16px; letter-spacing:1px; color:' + borderAccent + '">MONDAY REFLECTION</div>' +
-      '</div>' +
-      '<div style="font-size:11px; text-transform:uppercase; color:#94a3b8; margin-top:2px;">SECTOR 2814 WEEKLY CALIBRATE &middot; ' + dateLabel + '</div>' +
-    '</div>' +
-    '<button type="button" data-action="close-reflection-modal" class="settings-btn" style="border:none; font-size:16px"><i class="fa-solid fa-xmark"></i></button>' +
-  '</div>';
-
-  html += '<div style="margin-bottom:16px;">' +
-    '<div class="q-title"><i class="fa-solid fa-trophy"></i> 1. BEHAVIORAL WINS</div>' +
-    '<div class="q-sub">What behavioral wins or non-scale victories felt effortless or strong this past week?</div>' +
-    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-date="' + dateStr + '" data-field="wins" placeholder="e.g., Hit 8,000 steps daily even on busy days, packed meals ahead, energy felt high during lifts...">' + (reflection.wins || '') + '</textarea>' +
-  '</div>';
-
-  html += '<div style="margin-bottom:16px;">' +
-    '<div class="q-title"><i class="fa-solid fa-chart-line"></i> 2. TENSION POINTS & 7-DAY MATRIX</div>' +
-    '<div class="q-sub">Review your 7-day consistency below. Where did resistance or missed targets show up?</div>' +
-    '<div style="display:flex; gap:6px; margin: 10px 0;">';
-    DAYS_OF_WEEK.forEach(function(dObj, idx) {
-      var dStr = prevWeekDates[idx];
-      var evalRec = evaluateDayRecord(uData, dStr);
-      var isPass = evalRec.passed;
-      html += '<div style="flex:1; text-align:center; background:' + (isPass ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)') + '; border:1px solid ' + (isPass ? borderAccent : 'rgba(255,255,255,0.18)') + '; border-radius:8px; padding:6px 0;">' +
-        '<div style="font-family:\'Share Tech Mono\'; font-size:10px; color:#94a3b8">' + dObj.label.slice(0, 1) + '</div>' +
-        '<i class="fa-solid ' + (isPass ? 'fa-check' : 'fa-xmark') + '" style="font-size:12px; color:' + (isPass ? borderAccent : '#fff') + '; margin-top:2px;"></i>' +
-      '</div>';
-    });
-  html += '</div>' +
-    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-date="' + dateStr + '" data-field="tension" placeholder="e.g., Saturday dinner caused calories to slip; friction came from lack of pre-planned weekend meals...">' + (reflection.tension || '') + '</textarea>' +
-  '</div>';
-
-  html += '<div style="margin-bottom:16px;">' +
-    '<div class="q-title"><i class="fa-solid fa-arrows-rotate"></i> 3. WHAT MUST CHANGE MOVING FORWARD?</div>' +
-    '<div class="q-sub">What specific operational adjustment will you execute over the next 7 days?</div>' +
-    '<textarea class="reflection-textarea" data-action="set-reflection" data-user="' + userId + '" data-date="' + dateStr + '" data-field="adjustments" placeholder="e.g., Pre-log weekend meals on Friday, set out workout gear the night before...">' + (reflection.adjustments || '') + '</textarea>' +
-  '</div>';
-
-  html += '<div class="scripture-box">' +
-    '<div style="font-family:\'Orbitron\'; font-size:11px; font-weight:800; color:' + borderAccent + '; letter-spacing:1.5px; margin-bottom:4px;">ROMANS 6:21</div>' +
-    '<div style="font-style:italic; font-size:13px; color:#cbd5e1; margin-bottom:4px;">&ldquo;But what fruit were you getting at that time from the things of which you are now ashamed? For the end of those things is death.&rdquo;</div>' +
-    '<div style="font-size:11px; color:#94a3b8">Remember the outcome of old patterns. Walk forward with discipline.</div>' +
-  '</div>';
-
-  html += '<button class="charge-btn" data-action="submit-reflection" data-user="' + userId + '" data-date="' + dateStr + '" style="background:' + borderAccent + '">' +
-    '<i class="fa-solid fa-bolt"></i> ' + (reflection.completed ? 'UPDATE REFLECTION &amp; RECHARGE' : 'COMPLETE DEBRIEF &amp; CHARGE BATTERY') +
-  '</button>';
-
-  html += '</div></div>';
-  return html;
-}
-
-function renderExportModal() {
-  if (!state.reportModal) return "";
-  var modal = state.reportModal;
-  var u = USERS[modal.user];
-  var uData = state.data[modal.user];
-  var daysCount = modal.days;
-  var borderAccent = u.accent;
-
-  var today = new Date();
-  var dateList = [];
-  for (var i = daysCount - 1; i >= 0; i--) {
-    var d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
-    dateList.push(todayDateString(d));
-  }
-
-  var missedCount = { weight: 0, steps: 0, macros: 0, protein: 0, workout: 0 };
-  var totalTracked = 0;
-  var totalPassed = 0;
-
-  dateList.forEach(function(dStr) {
-    var record = evaluateDayRecord(uData, dStr);
-    totalTracked++;
-    if (record.passed) {
-      totalPassed++;
-    } else {
-      (record.missed || []).forEach(function(item) {
-        if (missedCount[item] !== undefined) missedCount[item]++;
-      });
+  gsap.to(".book-block", {
+    x: 0,
+    y: 0,
+    rotation: 0,
+    scale: 1,
+    opacity: 0.9,
+    duration: 1.8,
+    ease: "power3.out",
+    stagger: {
+      amount: 0.9,
+      from: "random"
     }
   });
 
-  var bottleneckLabels = {
-    steps: "Hit Steps (" + Number(uData.goals.steps).toLocaleString() + ")",
-    macros: "Followed Plan (<" + Number(uData.goals.calories).toLocaleString() + " kcal)",
-    protein: "Hit Protein Goals (" + uData.goals.protein + "g+)",
-    weight: "Tracked Weight Check-in",
-    workout: "Completed Workout Sessions"
-  };
-  var highestMissedKey = Object.keys(missedCount).reduce(function(a, b) {
-    return missedCount[a] > missedCount[b] ? a : b;
-  });
-  var bottleneckText = missedCount[highestMissedKey] > 0 
-    ? bottleneckLabels[highestMissedKey] + " (" + missedCount[highestMissedKey] + " missed)"
-    : "None! Flawless protocol execution.";
-
-  var passRate = Math.round((totalPassed / totalTracked) * 100);
-
-  var html = '<div class="modal-overlay" data-action="close-modal-overlay">' +
-    '<div class="modal-card" style="border-color:' + borderAccent + '">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">' +
-        '<div>' +
-          '<div style="font-family:\'Orbitron\'; font-weight:900; font-size:18px; color:' + borderAccent + '">' + u.callsign + ' // ' + daysCount + '-Day Export</div>' +
-          '<div style="font-size:11px; text-transform:uppercase; color:#94a3b8">Willpower Battery Analysis</div>' +
-        '</div>' +
-        '<button type="button" data-action="close-modal" class="settings-btn" style="border:none; font-size:16px"><i class="fa-solid fa-xmark"></i></button>' +
-      '</div>';
-
-  html += '<div style="display:flex; gap:8px; margin-bottom:14px;">' +
-    '<div class="hud-stat" style="flex:1">' +
-      '<div style="font-size:10px; color:#94a3b8; text-transform:uppercase">Pass Rate</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-size:18px; font-weight:800; color:' + (passRate >= 80 ? borderAccent : '#ffffff') + '">' + passRate + '%</div>' +
-    '</div>' +
-    '<div class="hud-stat" style="flex:1">' +
-      '<div style="font-size:10px; color:#94a3b8; text-transform:uppercase">Completed Days</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-size:18px; font-weight:800; color:#fff">' + totalPassed + '/' + totalTracked + '</div>' +
-    '</div>' +
-  '</div>';
-
-  html += '<div style="font-size:11px; font-weight:700; color:#cbd5e1; margin-bottom:4px; text-transform:uppercase; letter-spacing:1px"><i class="fa-solid fa-calendar-days" style="margin-right:5px"></i> Daily Status Log</div>';
-  html += '<div class="cal-grid">';
-  dateList.forEach(function(dStr) {
-    var isPass = evaluateDayRecord(uData, dStr).passed;
-    var dayNum = dStr.slice(8);
-    html += '<div class="cal-cell ' + (isPass ? 'pass' : 'fail') + '" title="' + dStr + '">' +
-      '<span style="font-size:9px; opacity:0.8">' + dayNum + '</span>' +
-      '<i class="fa-solid ' + (isPass ? 'fa-check' : 'fa-xmark') + '" style="font-size:12px; margin-top:2px"></i>' +
-    '</div>';
-  });
-  html += '</div>';
-
-  html += '<div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.18); border-radius:12px; padding:12px; margin-top:14px;">' +
-    '<div style="font-size:11px; font-weight:700; color:#cbd5e1; text-transform:uppercase; letter-spacing:1px"><i class="fa-solid fa-chart-line" style="margin-right:6px; color:' + borderAccent + '"></i> Greatest Consistency Drain</div>' +
-    '<div style="font-family:\'Share Tech Mono\'; font-size:14px; font-weight:700; color:#fff; margin-top:4px">' + bottleneckText + '</div>' +
-    '<div style="font-size:11px; color:#94a3b8; margin-top:4px">Target willpower calibration towards eliminating this single metric deficiency.</div>' +
-  '</div>';
-
-  html += '</div></div>';
-  return html;
+  gsap.fromTo(".center-label", 
+    { opacity: 0, scale: 0.9 }, 
+    { opacity: 1, scale: 1, duration: 1.2, delay: 0.5, ease: "power2.out" }
+  );
 }
 
-function renderUserPanel(userId) {
-  sanitizeState();
-  var u = USERS[userId];
-  var uData = state.data[userId] || defaultUserData();
-  var isP1 = userId === "p1";
-  var activeClass = isP1 ? "completed-p1" : "completed-p2";
-  var borderAccent = u.accent;
-
-  var todayStr = todayDateString();
-  var activeDate = state.selectedDate[userId] || todayStr;
-  var isViewingPast = activeDate !== todayStr;
-
-  var activeEval = evaluateDayRecord(uData, activeDate);
-  var activeDoneMap = isViewingPast ? (uData.history[activeDate] ? (uData.history[activeDate].done || {}) : {}) : (uData.done || {});
-  var activeWeight = isViewingPast ? (uData.history[activeDate] ? uData.history[activeDate].weight || "" : "") : uData.weight;
-
-  var activeDayOfWeek = new Date(activeDate + "T12:00:00").getDay();
-  var isWorkoutDayForActiveDate = (uData.workoutDays || []).indexOf(activeDayOfWeek) !== -1;
-  var protocols = getProtocols(uData);
-
-  var ratio = activeEval.totalRequired > 0 ? (activeEval.completedCount / activeEval.totalRequired) : 0;
-
-  var html = '<div class="corps-card" style="--card-accent:' + borderAccent + '">';
-
-  html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">' +
-    '<div style="display:flex; align-items:center; gap:12px;">' +
-      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(ratio, u.accent, u.secondary) + '">' +
-        greenLanternRingSvg(u.accent, ratio) +
-      '</div>' +
-      '<div>' +
-        '<div style="font-family:\'Orbitron\', monospace; font-size:20px; font-weight:900; letter-spacing:1px; color:' + borderAccent + '">' + u.callsign + '</div>' +
-        '<div style="font-size:12px; letter-spacing:1px; text-transform:uppercase; color:#94A3B8">' + u.role + '</div>' +
-      '</div>' +
-    '</div>' +
-    '<button class="settings-btn" data-action="toggle-settings" data-user="' + userId + '" title="Configure workout days and target goals">' +
-      '<i class="fa-solid fa-gear"></i>' +
-    '</button>' +
-  '</div>';
-
-  html += renderWeekGlance(userId);
-
-  if (isViewingPast) {
-    html += '<div class="history-banner" style="--card-accent:' + borderAccent + '">' +
-      '<div><i class="fa-solid fa-clock-rotate-left" style="color:' + borderAccent + '; margin-right:6px"></i>Editing Historical Log: <strong>' + activeDate + '</strong></div>' +
-      '<button class="history-reset-btn" data-action="return-today" data-user="' + userId + '">TODAY</button>' +
-    '</div>';
-  }
-
-  // Daily Protocols
-  html += '<div>';
-  if (activeDayOfWeek === 1) {
-    html += renderReflectionLine(userId, activeDate);
-  }
-  protocols.forEach(function(p) {
-    if (p.type === "workout_day" && !isWorkoutDayForActiveDate) {
-      return;
-    }
-
-    if (p.type === "input") {
-      html += '<div class="protocol-card">' +
-        '<div class="protocol-icon-box"><i class="' + p.icon + '"></i></div>' +
-        '<div style="flex:1">' +
-          '<div style="font-weight:700; font-size:15px">' + p.label + '</div>' +
-          '<div style="font-size:11px; color:#94a3b8">' + p.subtext + '</div>' +
-        '</div>' +
-        '<div style="width:80px">' +
-          '<input class="val-input" type="number" step="0.1" placeholder="---" value="' + (activeWeight || "") + '" data-action="set-weight" data-user="' + userId + '" data-date="' + activeDate + '" />' +
-        '</div>' +
-      '</div>';
-    } else {
-      var isDone = !!activeDoneMap[p.id];
-      html += '<div class="protocol-card ' + (isDone ? activeClass : "") + '">' +
-        '<div class="protocol-icon-box" style="' + (isDone ? 'color:' + borderAccent + ';' : '') + '"><i class="' + p.icon + '"></i></div>' +
-        '<div style="flex:1">' +
-          '<div style="font-weight:700; font-size:15px">' + p.label + '</div>' +
-          '<div style="font-size:11px; color:#94a3b8">' + p.subtext + '</div>' +
-        '</div>' +
-        '<button type="button" data-action="toggle-check" data-user="' + userId + '" data-protocol="' + p.id + '" data-date="' + activeDate + '" class="check-btn" style="' + (isDone ? 'background:' + borderAccent + '; border-color:' + borderAccent + '; color:#000;' : '') + '">' +
-          (isDone ? '<i class="fa-solid fa-check"></i>' : '') + 
-        '</button>' +
-      '</div>';
-    }
-  });
-  html += '</div>';
-
-  html += '<div class="hud-stat-box">' +
-    '<div class="hud-stat">' +
-      '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Daily Status</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:20px; color:' + (activeEval.passed ? borderAccent : '#ffffff') + '">' +
-        (activeEval.passed ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>') +
-      '</div>' +
-    '</div>' +
-    '<div class="hud-stat">' +
-      '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Weight</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:#fff">' + (activeWeight || '--') + '</div>' +
-    '</div>' +
-    '<div class="hud-stat">' +
-      '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Workout Day</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:15px; color:' + (isWorkoutDayForActiveDate ? borderAccent : '#64748b') + '">' + (isWorkoutDayForActiveDate ? 'SCHEDULED' : 'REST DAY') + '</div>' +
-    '</div>' +
-  '</div>';
-
-  html += '</div>';
-  return html;
-}
-
-function render() {
-  sanitizeState();
-  var now = new Date();
-  var hours = now.getHours();
-  var minutes = now.getMinutes();
-  var ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12 || 12;
-  var timeStr = hours + ":" + (minutes < 10 ? "0" + minutes : minutes);
-
-  var evalP1 = evaluateDayRecord(state.data.p1, state.selectedDate.p1 || todayDateString());
-  var evalP2 = evaluateDayRecord(state.data.p2, state.selectedDate.p2 || todayDateString());
-  var ratioP1 = evalP1.totalRequired > 0 ? (evalP1.completedCount / evalP1.totalRequired) : 0;
-  var ratioP2 = evalP2.totalRequired > 0 ? (evalP2.completedCount / evalP2.totalRequired) : 0;
-
-  var html = '<div style="position:relative; z-index:1">';
-
-  html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(0, 255, 136, 0.2); padding-bottom:12px;">' +
-    '<div>' +
-      '<div style="font-family:\'Share Tech Mono\', monospace; font-size:12px; letter-spacing:2px; color:#6EE7B7;"><i class="fa-solid fa-satellite" style="margin-right:6px"></i>OA CENTRAL BATTERY // LOG</div>' +
-      '<div class="header-clock">' + timeStr + ' <span style="font-size:14px; color:#6EE7B7">' + ampm + '</span></div>' +
-    '</div>' +
-    '<div style="text-align:right">' +
-      '<div style="font-size:11px; letter-spacing:1px; color:#94A3B8;">BATTERY SYNC</div>' +
-      '<div style="font-family:\'Orbitron\'; font-weight:700; color:#00FF88; font-size:13px;">0104 <span style="color:#64748B">&amp;</span> <span style="color:#00E5FF">0211</span></div>' +
-    '</div>' +
-  '</div>';
-
-  html += '<div class="narrow-only" style="display:flex; gap:12px; margin-bottom:16px;">' +
-    '<button class="lantern-btn ' + (state.activeTab === 'p1' ? 'selected-p1' : '') + '" data-action="select-tab" data-tab="p1">' +
-      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(ratioP1, USERS.p1.accent, USERS.p1.secondary) + '">' +
-        greenLanternRingSvg("#00ff88", ratioP1) +
-      '</div>' +
-      '<span style="font-family:\'Orbitron\'; font-size:14px; font-weight:800">Lantern 0104</span>' +
-    '</button>' +
-    '<button class="lantern-btn ' + (state.activeTab === 'p2' ? 'selected-p2' : '') + '" data-action="select-tab" data-tab="p2">' +
-      '<div class="pulse-lantern" style="line-height:0; ' + getDynamicRingStyle(ratioP2, USERS.p2.accent, USERS.p2.secondary) + '">' +
-        greenLanternRingSvg("#00e5ff", ratioP2) +
-      '</div>' +
-      '<span style="font-family:\'Orbitron\'; font-size:14px; font-weight:800">Lantern 0211</span>' +
-    '</button>' +
-  '</div>';
-
-  html += '<div class="user-grid">';
-  Object.keys(USERS).forEach(function(uId) {
-    var active = state.activeTab === uId;
-    html += '<div class="user-piece' + (active ? ' active' : '') + '">' + renderUserPanel(uId) + '</div>';
-  });
-  html += '</div>';
-
-  html += renderSettingsModal();
-  html += renderExportModal();
-  html += renderReflectionModal();
-
-  html += '</div>';
-  document.getElementById("root").innerHTML = html;
-}
-
-/* ---------------- Event Listeners ---------------- */
-document.getElementById("root").addEventListener("click", function(e) {
-  var el = e.target.closest("[data-action]");
-  if (!el) return;
-  var action = el.dataset.action;
-
-  if (action === "select-tab") {
-    state.activeTab = el.dataset.tab;
-    render();
-  } else if (action === "select-glance-date") {
-    var uG = el.dataset.user;
-    var dG = el.dataset.date;
-    if (dG > todayDateString()) return;
-    state.selectedDate[uG] = dG;
-    render();
-  } else if (action === "return-today") {
-    var uR = el.dataset.user;
-    state.selectedDate[uR] = todayDateString();
-    render();
-  } else if (action === "toggle-settings") {
-    var uS = el.dataset.user;
-    state.settingsModalUser = state.settingsModalUser === uS ? null : uS;
-    render();
-  } else if (action === "close-settings-modal") {
-    state.settingsModalUser = null;
-    render();
-  } else if (action === "close-settings-overlay") {
-    if (e.target.classList.contains("modal-overlay")) {
-      state.settingsModalUser = null;
-      render();
-    }
-  } else if (action === "toggle-protein") {
-    var uP = el.dataset.user;
-    sanitizeState();
-    state.data[uP].trackProtein = !state.data[uP].trackProtein;
-    syncDayToHistory(uP, state.selectedDate[uP] || todayDateString());
-    savePersisted();
-    render();
-  } else if (action === "toggle-day") {
-    var uD = el.dataset.user;
-    var day = parseInt(el.dataset.day, 10);
-    sanitizeState();
-    var days = state.data[uD].workoutDays || [];
-    var idx = days.indexOf(day);
-    if (idx !== -1) {
-      days.splice(idx, 1);
-    } else {
-      days.push(day);
-      days.sort();
-    }
-    state.data[uD].workoutDays = days;
-    syncDayToHistory(uD, state.selectedDate[uD] || todayDateString());
-    savePersisted();
-    render();
-  } else if (action === "export-log") {
-    var uExp = el.dataset.user;
-    var daysExp = parseInt(el.dataset.days, 10);
-    state.settingsModalUser = null; // Close settings when opening export log
-    state.reportModal = { user: uExp, days: daysExp };
-    render();
-  } else if (action === "close-modal") {
-    state.reportModal = null;
-    render();
-  } else if (action === "close-modal-overlay") {
-    if (e.target.classList.contains("modal-overlay")) {
-      state.reportModal = null;
-      render();
-    }
-  } else if (action === "open-reflection") {
-    var uOpen = el.dataset.user;
-    var dOpen = el.dataset.date;
-    state.reflectionModal = { user: uOpen, date: dOpen };
-    render();
-  } else if (action === "close-reflection-modal") {
-    state.reflectionModal = null;
-    render();
-  } else if (action === "close-reflection-overlay") {
-    if (e.target.classList.contains("modal-overlay")) {
-      state.reflectionModal = null;
-      render();
-    }
-  } else if (action === "submit-reflection") {
-    var uRef = el.dataset.user;
-    var refDate = el.dataset.date || todayDateString();
-    sanitizeState();
-
-    if (!state.data[uRef].reflections[refDate]) {
-      state.data[uRef].reflections[refDate] = { wins: "", tension: "", adjustments: "", completed: true };
-    } else {
-      state.data[uRef].reflections[refDate].completed = true;
-    }
-
-    playRingChargeSound(uRef === "p2");
-    savePersisted();
-    state.reflectionModal = null;
-    render();
-  } else if (action === "toggle-check") {
-    var u = el.dataset.user;
-    var proto = el.dataset.protocol;
-    var dateTarget = el.dataset.date || state.selectedDate[u] || todayDateString();
-    sanitizeState();
-
-    if (dateTarget === todayDateString()) {
-      if (!state.data[u].done) state.data[u].done = {};
-      state.data[u].done[proto] = !state.data[u].done[proto];
-    } else {
-      if (!state.data[u].history) state.data[u].history = {};
-      if (!state.data[u].history[dateTarget]) {
-        state.data[u].history[dateTarget] = { done: {}, weight: "" };
-      }
-      if (!state.data[u].history[dateTarget].done) {
-        state.data[u].history[dateTarget].done = {};
-      }
-      var prev = !!state.data[u].history[dateTarget].done[proto];
-      state.data[u].history[dateTarget].done[proto] = !prev;
-    }
-
-    syncDayToHistory(u, dateTarget);
-    playRingChargeSound(u === "p2");
-    savePersisted();
-    render();
-  }
+// Initialize on Load
+window.addEventListener("DOMContentLoaded", ()style => {
+  buildWheel();
+  animateIntro();
 });
-
-document.getElementById("root").addEventListener("change", function(e) {
-  var el = e.target.closest("[data-action]");
-  if (!el) return;
-  var action = el.dataset.action;
-  var u = el.dataset.user;
-  sanitizeState();
-
-  if (action === "set-weight") {
-    var dateTarget = el.dataset.date || state.selectedDate[u] || todayDateString();
-    if (dateTarget === todayDateString()) {
-      state.data[u].weight = el.value;
-    } else {
-      if (!state.data[u].history) state.data[u].history = {};
-      if (!state.data[u].history[dateTarget]) {
-        state.data[u].history[dateTarget] = { done: {}, weight: "" };
-      }
-      state.data[u].history[dateTarget].weight = el.value;
-    }
-    syncDayToHistory(u, dateTarget);
-    savePersisted();
-    render();
-  } else if (action === "set-goal") {
-    var metric = el.dataset.metric;
-    var val = parseFloat(el.value);
-    if (!isNaN(val) && val > 0) {
-      state.data[u].goals[metric] = val;
-      syncDayToHistory(u, state.selectedDate[u] || todayDateString());
-      savePersisted();
-      render();
-    }
-  }
-});
-
-document.getElementById("root").addEventListener("input", function(e) {
-  var elWeight = e.target.closest("[data-action='set-weight']");
-  if (elWeight) {
-    var uW = elWeight.dataset.user;
-    var dateTarget = elWeight.dataset.date || state.selectedDate[uW] || todayDateString();
-    sanitizeState();
-
-    if (dateTarget === todayDateString()) {
-      state.data[uW].weight = elWeight.value;
-    } else {
-      if (!state.data[uW].history) state.data[uW].history = {};
-      if (!state.data[uW].history[dateTarget]) {
-        state.data[uW].history[dateTarget] = { done: {}, weight: "" };
-      }
-      state.data[uW].history[dateTarget].weight = elWeight.value;
-    }
-    return;
-  }
-
-  var elReflect = e.target.closest("[data-action='set-reflection']");
-  if (elReflect) {
-    var uR = elReflect.dataset.user;
-    var field = elReflect.dataset.field;
-    var refDateIn = elReflect.dataset.date || todayDateString();
-    sanitizeState();
-
-    if (!state.data[uR].reflections[refDateIn]) {
-      state.data[uR].reflections[refDateIn] = { wins: "", tension: "", adjustments: "", completed: false };
-    }
-    state.data[uR].reflections[refDateIn][field] = elReflect.value;
-  }
-});
-
-setInterval(function() {
-  var activeEl = document.activeElement;
-  if (!activeEl || (activeEl.tagName !== "INPUT" && activeEl.tagName !== "TEXTAREA")) {
-    render();
-  }
-}, 10000);
-
-initPersistence();
-</script>
-</body>
-</html>
