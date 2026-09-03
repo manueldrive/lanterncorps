@@ -250,15 +250,6 @@
     color: #020b08;
   }
 
-  .schedule-drawer {
-    background: rgba(2, 14, 10, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 12px;
-    padding: 14px;
-    margin-bottom: 14px;
-    animation: fadeIn 0.2s ease;
-  }
-
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
@@ -520,7 +511,7 @@
     font-size: 13px;
   }
 
-  /* Monday Reflection Debrief Section (now rendered inside a modal) */
+  /* Monday Reflection Debrief Section (rendered inside a modal) */
   .reflection-card {
     background: rgba(3, 18, 13, 0.96);
     border: 1px solid var(--card-accent, #00ff88);
@@ -528,18 +519,6 @@
     border-radius: 20px;
     padding: 20px 18px;
     margin-bottom: 20px;
-  }
-
-  .reflection-tag {
-    background: rgba(0, 255, 136, 0.12);
-    border: 1px solid var(--card-accent, #00ff88);
-    color: var(--card-accent, #00ff88);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 6px;
-    letter-spacing: 1px;
   }
 
   .q-title {
@@ -694,7 +673,7 @@ function defaultUserData() {
   return {
     weight: "",
     done: {},
-    workoutDays: [3, 5, 0],
+    workoutDays: [], // Default set to 0 days
     trackProtein: false,
     goals: {
       steps: 8000,
@@ -712,7 +691,7 @@ var state = {
     p1: todayDateString(),
     p2: todayDateString()
   },
-  openSettings: { p1: false, p2: false },
+  settingsModalUser: null, // Modal active user state
   reportModal: null,
   reflectionModal: null,
   data: {
@@ -781,7 +760,7 @@ function sanitizeState() {
       state.data[u].reflections = {};
     }
     if (!Array.isArray(state.data[u].workoutDays)) {
-      state.data[u].workoutDays = [3, 5, 0];
+      state.data[u].workoutDays = []; // Default fallback set to 0 days
     }
     if (state.data[u].weight === undefined) {
       state.data[u].weight = "";
@@ -1026,20 +1005,6 @@ function getMondayToSundayDates() {
   return dates;
 }
 
-function getPriorWeekDates() {
-  var now = new Date();
-  var day = now.getDay();
-  var diffToMon = (day === 0 ? -6 : 1) - day;
-  var currentMon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon);
-  
-  var prevWeekDates = [];
-  for (var i = 7; i >= 1; i--) {
-    var d = new Date(currentMon.getFullYear(), currentMon.getMonth(), currentMon.getDate() - i);
-    prevWeekDates.push(todayDateString(d));
-  }
-  return prevWeekDates;
-}
-
 function getPriorWeekDatesFor(mondayStr) {
   var parts = mondayStr.split("-");
   var mondayDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
@@ -1093,8 +1058,6 @@ function getReflectionFor(userId, dateStr) {
   };
 }
 
-// Checklist line item — sits inside the daily protocol list on Mondays,
-// opens the full reflection modal, and shows solid lantern-accent bg once filled out.
 function renderReflectionLine(userId, dateStr) {
   var u = USERS[userId];
   var borderAccent = u.accent;
@@ -1112,6 +1075,73 @@ function renderReflectionLine(userId, dateStr) {
       (isDone ? '<i class="fa-solid fa-check"></i>' : '') +
     '</div>' +
   '</div>';
+}
+
+function renderSettingsModal() {
+  if (!state.settingsModalUser) return "";
+  var userId = state.settingsModalUser;
+  var u = USERS[userId];
+  var uData = state.data[userId] || defaultUserData();
+  var borderAccent = u.accent;
+  var hasProteinTrack = uData.trackProtein === true;
+
+  var html = '<div class="modal-overlay" data-action="close-settings-overlay">' +
+    '<div class="modal-card" style="border-color:' + borderAccent + '">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">' +
+        '<div>' +
+          '<div style="font-family:\'Orbitron\'; font-weight:900; font-size:18px; color:' + borderAccent + '">' + u.callsign + ' // Settings</div>' +
+          '<div style="font-size:11px; text-transform:uppercase; color:#94a3b8">Target Calibration</div>' +
+        '</div>' +
+        '<button type="button" data-action="close-settings-modal" class="settings-btn" style="border:none; font-size:16px"><i class="fa-solid fa-xmark"></i></button>' +
+      '</div>';
+
+  html += '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:8px;"><i class="fa-solid fa-sliders" style="margin-right:4px"></i> Daily Target Calibration</div>' +
+    
+    '<div class="goal-input-row">' +
+      '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-person-walking" style="width:16px"></i> Daily Steps:</span>' +
+      '<input type="number" step="500" class="goal-setting-input" value="' + uData.goals.steps + '" data-action="set-goal" data-user="' + userId + '" data-metric="steps" />' +
+    '</div>' +
+
+    '<div class="goal-input-row">' +
+      '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-fire-flame-curved" style="width:16px"></i> Max Calories:</span>' +
+      '<input type="number" step="50" class="goal-setting-input" value="' + uData.goals.calories + '" data-action="set-goal" data-user="' + userId + '" data-metric="calories" />' +
+    '</div>' +
+
+    '<div class="goal-input-row">' +
+      '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-drumstick-bite" style="width:16px"></i> Track Protein:</span>' +
+      '<button class="toggle-switch-btn ' + (hasProteinTrack ? 'on' : '') + '" data-action="toggle-protein" data-user="' + userId + '"><span class="toggle-knob"></span></button>' +
+    '</div>';
+
+    if (hasProteinTrack) {
+      html += '<div class="goal-input-row" style="margin-top:-4px; margin-bottom:14px; padding-left:20px;">' +
+        '<span style="font-size:11px; color:#94a3b8">Protein Goal (g):</span>' +
+        '<input type="number" step="5" class="goal-setting-input" value="' + uData.goals.protein + '" data-action="set-goal" data-user="' + userId + '" data-metric="protein" />' +
+      '</div>';
+    } else {
+      html += '<div style="margin-bottom:10px;"></div>';
+    }
+
+    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; margin-top:14px;">' +
+      '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '"><i class="fa-regular fa-calendar-check" style="margin-right:4px"></i> Active Workout Days</div>' +
+      '<div style="font-size:10px; color:#94a3b8">' + (uData.workoutDays || []).length + ' selected (Can be 0)</div>' +
+    '</div>' +
+    '<div style="display:flex; gap:4px; margin-bottom:18px;">';
+    DAYS_OF_WEEK.forEach(function(dayObj) {
+      var isSelected = (uData.workoutDays || []).indexOf(dayObj.jsDay) !== -1;
+      html += '<button class="day-chip" data-action="toggle-day" data-user="' + userId + '" data-day="' + dayObj.jsDay + '" style="' + (isSelected ? 'background:' + borderAccent + '; color:#020b08; border-color:' + borderAccent + '; box-shadow:0 0 8px ' + borderAccent + '88;' : '') + '">' +
+        dayObj.label +
+      '</button>';
+    });
+  html += '</div>' +
+
+    '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:6px;"><i class="fa-solid fa-file-export" style="margin-right:4px"></i> Export Success History</div>' +
+    '<div style="display:flex; gap:8px;">' +
+      '<button class="export-btn" data-action="export-log" data-user="' + userId + '" data-days="7"><i class="fa-solid fa-chart-simple"></i> Last 7 Days</button>' +
+      '<button class="export-btn" data-action="export-log" data-user="' + userId + '" data-days="30"><i class="fa-solid fa-calendar-check"></i> Last 30 Days</button>' +
+    '</div>';
+
+  html += '</div></div>';
+  return html;
 }
 
 function renderReflectionModal() {
@@ -1282,7 +1312,6 @@ function renderUserPanel(userId) {
   var isP1 = userId === "p1";
   var activeClass = isP1 ? "completed-p1" : "completed-p2";
   var borderAccent = u.accent;
-  var isSettingsOpen = !!state.openSettings[userId];
 
   var todayStr = todayDateString();
   var activeDate = state.selectedDate[userId] || todayStr;
@@ -1310,7 +1339,7 @@ function renderUserPanel(userId) {
         '<div style="font-size:12px; letter-spacing:1px; text-transform:uppercase; color:#94A3B8">' + u.role + '</div>' +
       '</div>' +
     '</div>' +
-    '<button class="settings-btn" data-action="toggle-settings" data-user="' + userId + '" title="Configure workout days and target goals" style="' + (isSettingsOpen ? 'color:' + borderAccent + '; border-color:' + borderAccent + ';' : '') + '">' +
+    '<button class="settings-btn" data-action="toggle-settings" data-user="' + userId + '" title="Configure workout days and target goals">' +
       '<i class="fa-solid fa-gear"></i>' +
     '</button>' +
   '</div>';
@@ -1324,57 +1353,7 @@ function renderUserPanel(userId) {
     '</div>';
   }
 
-  if (isSettingsOpen) {
-    var hasProteinTrack = uData.trackProtein === true;
-    html += '<div class="schedule-drawer" style="border-color:' + borderAccent + '66">' +
-      '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:8px;"><i class="fa-solid fa-sliders" style="margin-right:4px"></i> Daily Target Calibration</div>' +
-      
-      '<div class="goal-input-row">' +
-        '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-person-walking" style="width:16px"></i> Daily Steps:</span>' +
-        '<input type="number" step="500" class="goal-setting-input" value="' + uData.goals.steps + '" data-action="set-goal" data-user="' + userId + '" data-metric="steps" />' +
-      '</div>' +
-
-      '<div class="goal-input-row">' +
-        '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-fire-flame-curved" style="width:16px"></i> Max Calories:</span>' +
-        '<input type="number" step="50" class="goal-setting-input" value="' + uData.goals.calories + '" data-action="set-goal" data-user="' + userId + '" data-metric="calories" />' +
-      '</div>' +
-
-      '<div class="goal-input-row">' +
-        '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-drumstick-bite" style="width:16px"></i> Track Protein:</span>' +
-        '<button class="toggle-switch-btn ' + (hasProteinTrack ? 'on' : '') + '" data-action="toggle-protein" data-user="' + userId + '"><span class="toggle-knob"></span></button>' +
-      '</div>';
-
-      if (hasProteinTrack) {
-        html += '<div class="goal-input-row" style="margin-top:-4px; margin-bottom:14px; padding-left:20px;">' +
-          '<span style="font-size:11px; color:#94a3b8">Protein Goal (g):</span>' +
-          '<input type="number" step="5" class="goal-setting-input" value="' + uData.goals.protein + '" data-action="set-goal" data-user="' + userId + '" data-metric="protein" />' +
-        '</div>';
-      } else {
-        html += '<div style="margin-bottom:10px;"></div>';
-      }
-
-      html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
-        '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '"><i class="fa-regular fa-calendar-check" style="margin-right:4px"></i> Active Workout Days</div>' +
-        '<div style="font-size:10px; color:#94a3b8">' + (uData.workoutDays || []).length + ' selected (Can be 0)</div>' +
-      '</div>' +
-      '<div style="display:flex; gap:4px; margin-bottom:14px;">';
-      DAYS_OF_WEEK.forEach(function(dayObj) {
-        var isSelected = (uData.workoutDays || []).indexOf(dayObj.jsDay) !== -1;
-        html += '<button class="day-chip" data-action="toggle-day" data-user="' + userId + '" data-day="' + dayObj.jsDay + '" style="' + (isSelected ? 'background:' + borderAccent + '; color:#020b08; border-color:' + borderAccent + '; box-shadow:0 0 8px ' + borderAccent + '88;' : '') + '">' +
-          dayObj.label +
-        '</button>';
-      });
-    html += '</div>' +
-
-      '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:6px;"><i class="fa-solid fa-file-export" style="margin-right:4px"></i> Export Success History</div>' +
-      '<div style="display:flex; gap:8px;">' +
-        '<button class="export-btn" data-action="export-log" data-user="' + userId + '" data-days="7"><i class="fa-solid fa-chart-simple"></i> Last 7 Days</button>' +
-        '<button class="export-btn" data-action="export-log" data-user="' + userId + '" data-days="30"><i class="fa-solid fa-calendar-check"></i> Last 30 Days</button>' +
-      '</div>' +
-    '</div>';
-  }
-
-  // Daily Protocols (Monday Reflection appears as the first line item on Mondays)
+  // Daily Protocols
   html += '<div>';
   if (activeDayOfWeek === 1) {
     html += renderReflectionLine(userId, activeDate);
@@ -1481,6 +1460,7 @@ function render() {
   });
   html += '</div>';
 
+  html += renderSettingsModal();
   html += renderExportModal();
   html += renderReflectionModal();
 
@@ -1509,8 +1489,16 @@ document.getElementById("root").addEventListener("click", function(e) {
     render();
   } else if (action === "toggle-settings") {
     var uS = el.dataset.user;
-    state.openSettings[uS] = !state.openSettings[uS];
+    state.settingsModalUser = state.settingsModalUser === uS ? null : uS;
     render();
+  } else if (action === "close-settings-modal") {
+    state.settingsModalUser = null;
+    render();
+  } else if (action === "close-settings-overlay") {
+    if (e.target.classList.contains("modal-overlay")) {
+      state.settingsModalUser = null;
+      render();
+    }
   } else if (action === "toggle-protein") {
     var uP = el.dataset.user;
     sanitizeState();
@@ -1537,6 +1525,7 @@ document.getElementById("root").addEventListener("click", function(e) {
   } else if (action === "export-log") {
     var uExp = el.dataset.user;
     var daysExp = parseInt(el.dataset.days, 10);
+    state.settingsModalUser = null; // Close settings when opening export log
     state.reportModal = { user: uExp, days: daysExp };
     render();
   } else if (action === "close-modal") {
