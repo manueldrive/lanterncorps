@@ -1448,18 +1448,6 @@ function renderUserPanel(userId) {
   }
   protocols.forEach(function(p) {
     if (p.type === "workout_day" && !isWorkoutDayForActiveDate) {
-      // Rest day: no requirement, but keep a way into the workout page.
-      if (!isViewingPast) {
-        var restTrained = finishedWorkouts[userId][activeDate];
-        html += '<div class="protocol-card" style="opacity:0.85">' +
-          '<div class="protocol-icon-box"><i class="' + p.icon + '"></i></div>' +
-          '<div style="flex:1">' +
-            '<div style="font-weight:700; font-size:15px">Bonus Training</div>' +
-            '<div style="font-size:11px; color:#94a3b8">' + (restTrained && restTrained.day ? 'Trained: ' + (WORKOUT_NAMES[restTrained.day] || restTrained.day) : 'Rest day, optional') + '</div>' +
-          '</div>' +
-          '<a class="train-btn" style="--train-accent:' + borderAccent + '" href="workout.html?u=' + userId + '"><i class="fa-solid fa-dumbbell"></i>TRAIN</a>' +
-        '</div>';
-      }
       return;
     }
 
