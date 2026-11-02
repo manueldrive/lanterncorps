@@ -325,6 +325,9 @@ function fillSession(s){
 }
 session=blankSession();
 const st0=lsGet(LK+"ui"); if(st0){ if(DAYS[st0.day]){ day=st0.day; EX=DAYS[day].ex; } if(typeof st0.cur==="number"&&st0.cur>=0&&st0.cur<EX.length) cur=st0.cur; if(st0.rest) rest=st0.rest; }
+// Opened from Battery Log with the day's planned workout (?d=legs|upper|full): start on that workout.
+const dParam=new URLSearchParams(location.search).get("d");
+if(DAYS[dParam]&&dParam!==day){ day=dParam; EX=DAYS[day].ex; cur=0; }
 
 // ---------- Storage: Lanterncorps Firebase (own branch per lantern), local fallback ----------
 // Workout logs live under lantern_workouts_v1/<lantern>, NOT inside the Battery Log node, so the main app's
