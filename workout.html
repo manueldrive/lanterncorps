@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lantern Training</title>
+<meta name="theme-color" content="#020b08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+/* Which lantern is training: ?u=p1 (Lantern 0104) or ?u=p2 (Lantern 0211). Set accent before first paint. */
+(function(){
+  var L={p1:{callsign:"Lantern 0104",accent:"#00ff88",secondary:"#00cc66",soft:"rgba(0,255,136,.12)"},
+         p2:{callsign:"Lantern 0211",accent:"#00e5ff",secondary:"#00b4d8",soft:"rgba(0,229,255,.12)"}};
+  var u=new URLSearchParams(location.search).get("u"); if(!L[u]) u="p1";
+  window.LANTERN=Object.assign({id:u},L[u]);
+  var r=document.documentElement.style;
+  r.setProperty("--accent",L[u].accent); r.setProperty("--accent2",L[u].secondary); r.setProperty("--done-soft",L[u].soft);
+})();
+</script>
+</head>
+<body>
+<style>
+/* Layout: one-exercise-at-a-time logbook. Plate strip on top, motion + cues side by side, set table, rest bar pinned to the bottom. */
+:root{
+  --bg:#020b08; --surface:rgba(4,20,15,.88); --sunk:rgba(6,35,26,.9); --ink:#E2E8F0; --muted:#94A3B8; --line:rgba(255,255,255,.12);
+  --accent:#00ff88; --accent2:#00cc66; --accent-ink:#00140b; --done:var(--accent); --done-soft:rgba(0,255,136,.12);
+  --rest:#04150f; --rest-ink:var(--accent);
+  --display:"Orbitron","Arial Narrow",system-ui,sans-serif;
+  --body:"Rajdhani",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Share Tech Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.4;font-weight:500;
+  background:radial-gradient(circle at 15% 20%,var(--done-soft) 0%,transparent 42%),radial-gradient(circle at 50% 50%,#041f17 0%,#020b08 85%) fixed;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 120px}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:900;font-size:1.6rem;color:var(--accent);text-shadow:0 0 18px var(--done-soft);line-height:1;margin:0;letter-spacing:.01em;text-transform:uppercase}
+.sub{color:var(--muted);font-size:.9rem;margin-top:4px}
+.sub a{color:var(--accent)}
+.restpick,.daypick{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted)}
+.restpick button,.daypick button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-weight:600;font-variant-numeric:tabular-nums}
+.restpick button[aria-pressed="true"],.daypick button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);box-shadow:0 0 12px var(--done-soft)}
+
+.hdr-r{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap}
+.daypick button{font-family:var(--display);font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;padding:4px 14px}
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.chip{border:0;background:var(--surface);border-radius:10px;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;
+  box-shadow:inset 0 0 0 1px var(--line);min-width:0}
+.chip b{font-family:var(--mono);font-size:1.3rem;line-height:1}
+.chip small{font-size:.66rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-transform:uppercase;letter-spacing:.04em}
+.chip[aria-current="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:0 0 16px var(--done-soft),0 0 6px var(--accent)}
+.chip[aria-current="true"] small{color:var(--accent-ink);opacity:.85}
+.chip.done{box-shadow:inset 0 0 0 2px var(--done)}
+.chip.done b::after{content:" ✓";color:var(--done);font-size:.9rem}
+.chip[aria-current="true"].done b::after{color:var(--accent-ink)}
+
+.extitle{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h2{font-family:var(--display);font-weight:800;font-size:1.3rem;letter-spacing:.02em;line-height:1.05;margin:0;text-wrap:balance}
+.rx{font-family:var(--mono);font-weight:400;font-size:1.05rem;color:var(--muted);letter-spacing:.02em}
+.rx b{color:var(--ink)}
+
+.demo{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px}
+@media (max-width:600px){.demo{grid-template-columns:1fr}}
+.stage{background:var(--surface);border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);position:relative;overflow:hidden;min-width:0}
+.novid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;aspect-ratio:16/9;padding:16px 16px 56px;text-align:center;color:var(--muted);font-weight:600}
+.vid{display:none;position:relative;width:100%;aspect-ratio:16/9;background:#000}
+.vid iframe,.vid>div{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.stage.has-vid .vid{display:block}
+.stage.has-vid .novid{display:none}
+.pill[hidden]{display:none}
+.stagebar{position:absolute;left:10px;right:10px;bottom:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.stagebar>*{pointer-events:auto}
+.pill{border:0;border-radius:999px;padding:6px 12px;font-size:.85rem;font-weight:600;background:var(--sunk);color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.pill.primary{background:var(--accent);color:var(--accent-ink)}
+.tips{background:var(--sunk);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tips h3{font-family:var(--display);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--muted);font-weight:700}
+.tips ol{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+.tips li::marker{font-family:var(--display);font-weight:700;color:var(--accent)}
+.feel,.avoid{font-size:.92rem;margin:0}
+.feel b,.avoid b{font-family:var(--display);letter-spacing:.06em;text-transform:uppercase;font-size:.68rem;margin-right:4px}
+.avoid b{color:#fb923c}
+.tempo{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.log{background:var(--surface);border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);padding:6px 0 10px}
+.row{display:grid;grid-template-columns:40px minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) 52px;gap:8px;align-items:center;padding:6px 12px}
+.row.head{font-family:var(--display);font-weight:700;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-block:8px 4px}
+.row .n{font-family:var(--mono);font-weight:400;font-size:1.3rem;text-align:center}
+.row .prev{color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row input{width:100%;min-width:0;border:1px solid var(--line);background:rgba(0,0,0,.35);font-family:var(--mono);border-radius:8px;padding:9px 8px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums;font-size:1.05rem}
+.row input::placeholder{color:var(--muted);font-weight:500;opacity:.8}
+.tick{width:44px;height:40px;border-radius:10px;border:2px solid var(--line);background:transparent;font-size:1.1rem;font-weight:800;color:var(--muted)}
+.row.isdone{background:var(--done-soft)}
+.row.isdone .tick{background:var(--done);border-color:var(--done);color:var(--accent-ink);box-shadow:0 0 10px var(--done-soft)}
+.row.isdone input{border-color:transparent;background:transparent}
+.logfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px 0;flex-wrap:wrap}
+.ghost{border:1px dashed var(--line);background:transparent;border-radius:10px;padding:8px 14px;font-weight:600}
+.saved{font-size:.8rem;color:var(--muted)}
+
+.nav{display:flex;justify-content:space-between;gap:10px}
+.nav button{flex:1;border:0;border-radius:12px;padding:14px;font-family:var(--display);font-weight:700;font-size:.85rem;letter-spacing:.04em;text-transform:uppercase;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.nav button.next{background:var(--ink);color:#020b08;box-shadow:none}
+.nav button:disabled{opacity:.35;cursor:default}
+
+.restbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--rest);color:var(--rest-ink);border-top:1px solid var(--accent);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  display:flex;align-items:center;gap:12px;box-shadow:0 -6px 24px rgba(0,0,0,.18);transform:translateY(110%);transition:transform .25s ease}
+.restbar.on{transform:none}
+.restbar .lbl{font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:.65rem;line-height:1.1}
+.restbar .t{font-family:var(--mono);font-weight:400;font-size:2.4rem;line-height:1;font-variant-numeric:tabular-nums;min-width:3.2ch}
+.restbar .prog{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden;min-width:40px}
+.restbar .prog i{display:block;height:100%;background:var(--rest-ink);box-shadow:0 0 10px var(--accent);width:100%;transform-origin:left}
+.restbar button{border:0;border-radius:10px;padding:9px 11px;font-weight:700;background:rgba(255,255,255,.08);color:var(--rest-ink);font-variant-numeric:tabular-nums}
+.restbar.over{background:var(--accent);color:var(--accent-ink)}
+.restbar.over button{color:var(--accent-ink);background:rgba(0,0,0,.15)}
+.restbar.over .prog i{background:var(--accent-ink);box-shadow:none}
+@media (prefers-reduced-motion: reduce){.restbar{transition:none}}
+
+/* Lantern additions */
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.back{color:var(--muted);text-decoration:none;font-weight:700;font-size:.95rem;display:inline-flex;align-items:center;gap:6px;padding:6px 0}
+.back:hover{color:var(--accent)}
+.callsign{font-family:var(--display);font-weight:800;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);
+  border:1px solid var(--accent);border-radius:999px;padding:4px 10px;box-shadow:0 0 10px var(--done-soft)}
+.stage,.log,.chip{backdrop-filter:blur(10px)}
+.finish{display:flex;flex-direction:column;align-items:center;gap:8px;padding:6px 0 4px}
+.finish-btn{width:100%;border:2px solid var(--accent);border-radius:14px;padding:16px;background:transparent;color:var(--accent);
+  font-family:var(--display);font-weight:900;font-size:1rem;letter-spacing:.12em;text-transform:uppercase;
+  box-shadow:0 0 18px var(--done-soft),inset 0 0 18px var(--done-soft);transition:background .2s,color .2s}
+.finish-btn:hover{background:var(--done-soft)}
+.finish-btn.charged{background:var(--accent);color:var(--accent-ink);box-shadow:0 0 28px var(--accent)}
+.finish-note{margin:0;color:var(--muted);font-size:.9rem;text-align:center}
+@media (prefers-reduced-motion: reduce){.finish-btn{transition:none}}
+</style>
+
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" id="back" href="v2.html">← Battery Log</a>
+    <span class="callsign" id="callsign"></span>
+  </div>
+  <header>
+    <div>
+      <h1 id="title">Leg Day v1</h1>
+      <div class="sub"><span id="today"></span> · <span id="progress"></span> · <a id="plink" href="https://www.youtube.com/playlist?list=PLceyAUiKKclxn3VE34Rlkcc-xc7Wqinl4" target="_blank" rel="noopener">Playlist</a></div>
+    </div>
+    <div class="hdr-r">
+      <div class="daypick" role="group" aria-label="Workout day">
+        <button id="d-legs" data-d="legs">Legs</button><button id="d-upper" data-d="upper">Upper</button><button id="d-full" data-d="full">Full</button>
+      </div>
+      <div class="restpick" role="group" aria-label="Rest length">Rest
+        <button id="r45" data-s="45">45s</button><button id="r60" data-s="60">60s</button><button id="r90" data-s="90">90s</button><button id="r120" data-s="120">2m</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="strip" id="strip" aria-label="Exercises"></nav>
+
+  <section class="extitle">
+    <h2 id="exname"></h2>
+    <div class="rx" id="exrx"></div>
+  </section>
+
+  <section class="demo">
+    <div class="stage" id="stage">
+      <div class="vid"><div id="ytp"></div></div>
+      <div class="novid"><span>Demo video unavailable</span><span>Tap ▶ Full video to watch</span></div>
+      <div class="stagebar">
+        <button class="pill" id="pause" type="button">Pause</button>
+        <a class="pill primary" id="watch" target="_blank" rel="noopener">▶ Full video</a>
+      </div>
+    </div>
+    <aside class="tips">
+      <h3>Form cues</h3>
+      <ol id="cues"></ol>
+      <p class="feel" id="feel"></p>
+      <p class="avoid" id="avoid"></p>
+      <div class="tempo" id="tempo"></div>
+    </aside>
+  </section>
+
+  <section class="log" aria-label="Sets">
+    <div class="row head"><span style="text-align:center">Set</span><span>Last time</span><span style="text-align:center" id="wlabel">Lbs</span><span style="text-align:center">Reps</span><span></span></div>
+    <div id="rows"></div>
+    <div class="logfoot">
+      <div style="display:flex;gap:8px"><button class="ghost" id="addset" type="button">+ Add set</button><button class="ghost" id="rmset" type="button">− Remove</button></div>
+      <span class="saved" id="saved"></span>
+    </div>
+  </section>
+
+  <div class="nav"><button id="prev" type="button">← Prev</button><button id="next" class="next" type="button">Next →</button></div>
+
+  <section class="finish">
+    <button class="finish-btn" id="finish" type="button">Finish Workout</button>
+    <p class="finish-note" id="finishnote">Charges your ring: checks off today's workout in Battery Log.</p>
+  </section>
+</div>
+
+<div class="restbar" id="restbar" role="timer" aria-live="off">
+  <div><div class="lbl" id="restlbl">Rest</div><div class="t" id="restt">1:30</div></div>
+  <div class="prog"><i id="restprog"></i></div>
+  <button id="rminus" type="button">−15</button><button id="rplus" type="button">+15</button><button id="rskip" type="button">Done</button>
+</div>
+
+<script>
+(function(){
+"use strict";
+// ---------- Exercise library ----------
+const LEGS=[
+ {id:"bridge",yt:"AL7VE_qo1K0",s:16,e:24,name:"Glute Bridge",video:"Glute bridge 2",sets:3,reps:"12",bw:true,
+  cues:["Lie on your back with your heels lined up under your knees: not out wide, not tucked against your butt.","Hands flat on the floor. Push through your heels to lift your hips toward the ceiling; imagine thumbtacks under your toes so you can't push through them.","At the top, squeeze your glutes hard (hold a $100 bill between them) and tuck your hips under you, like a dog tucking its tail.","Can't feel your glutes? Hold the top for a couple of seconds, or put your hands on them."],
+  feel:"Glutes. Hamstrings means your feet are too far out; quads means they're too close or you're pushing through your toes.",avoid:"Stopping short at the top. Fully extend your hips.",tempo:"Up · squeeze 1–2 s at the top · down"},
+ {id:"deadbug",yt:"RWp83SigTXg",s:85,e:91,name:"Dead Bug",video:"Dead bug tutorial",sets:3,reps:"8/side",bw:true,
+  cues:["On your back, push your lower back into the floor and bring your ribs toward your belly button, without lifting your pelvis.","Lift your legs so your knees stack over your hips; arms straight up, wrists over shoulders.","Slowly lower your opposite arm and leg while your torso stays set in stone.","Make fists and squeeze everything (glutes, core, hands), then come back slowly and switch."],
+  feel:"Your core working to resist movement.",avoid:"Chasing more reps. You get better by holding the extended position longer.",tempo:"Hold the reach ~2 s at first, building to 5–7 s"},
+ {id:"goblet",yt:"lXy8MfZNNyU",s:116.5,e:131,name:"Goblet Squat",video:"Goblet Squat Exercise Tutorial",sets:3,reps:"10",bw:false,
+  cues:["Hold the dumbbell close to your chest, but not jammed against it. Too far away loads your lower back.","Elbows point straight down, armpits squeezed shut, core braced like you're about to be punched.","Push your hips back a little, then drop into the squat with knees out over your 2nd–3rd toe. Grip the floor; toes stay down.","Push your feet into the floor to stand and squeeze your butt at the top."],
+  feel:"Legs, plus your core holding the weight in front.",avoid:"Going so deep your lower back rounds (stop at a comfortable depth), or letting your knees cave in.",tempo:"Tempo 3 down · 1 pause · 1 up"},
+ {id:"slrdl",yt:"14uIyy6htzU",s:0,e:25.5,name:"Supported Single-Leg RDL",video:"Supported Single leg RDL",sets:3,reps:"8/leg",bw:false,
+  cues:["Hold onto something about hip height for support.","Hold the dumbbell on the outside, away from your support, and keep it close to your body.","Keep a soft bend in your standing knee.","Push your hips back toward the wall behind you as your back leg rises toward the ceiling."],
+  feel:"",avoid:"Letting the dumbbell drift away from your body.",tempo:"Tempo 3 down · 1 up"},
+ {id:"revcrunch",yt:"XVOIElqv5CQ",s:0,e:11.5,name:"Reverse Crunch",video:"Reverse crunches",sets:3,reps:"12",bw:true,
+  cues:["Hold onto something to anchor yourself.","Keep your knees bent the entire time.","Bring your knees toward your nose."],
+  feel:"",avoid:"Straightening your legs.",tempo:"Tempo 1 up · 1 hold · 3 down"},
+ {id:"hipthrust",yt:"wpVUT3iCyXk",s:119,e:129,name:"Bodyweight Hip Thrust",video:"Bodyweight hip thrust",sets:3,reps:"15",bw:true,
+  cues:["Put your lower shoulder blades (not your upper back) on a bench, couch or table.","Feet flat with heels in line with your knees; chin tucked; core braced so your lower back doesn't sag at the bottom.","Push through your heels to drive your hips up. Imagine thumbtacks under your toes.","At the top, squeeze your glutes hard and rotate your hips up under you, then lower all the way down."],
+  feel:"Glutes, hard at the top.",avoid:"Looking up and overarching, or pushing through your toes and lifting your heels.",tempo:"Tempo 1 up · 2 hold · 2 down"},
+ {id:"splitsquat",yt:"_dCpU-6yQF8",s:35,e:41.5,name:"DB Split Squat",video:"DB Split Squat 2",sets:3,reps:"8/leg",bw:false,
+  cues:["Stagger your feet like train tracks, a little out to the side, not in one line.","Lean your torso slightly forward and keep the dumbbells close to your body.","Bend both knees and lightly tap the back knee down (go as low as you can for now), then come back up.","Keep your front knee out over your 2nd–3rd toe the whole time."],
+  feel:"",avoid:"Staying bolt upright, which pushes your knee far forward. With knee pain, step the back foot farther back so the front shin stays vertical.",tempo:"Tempo 2 down · 1 up"}
+];
+const UPPER=[
+ {id:"latstretch",yt:"KA0Cz2Jx96Q",s:21,e:35,name:"Lat Stretch",video:"Lat Stretch",sets:2,reps:"30s",bw:true,
+  cues:["Kneel facing a bench with your elbows on the edge, holding a stick or dowel.","Sit your hips back toward your heels.","Let your chest sink below the bench and bring your hands behind your head.","Breathe slowly and sink a little deeper on each exhale."],
+  feel:"A long stretch down the sides of your back (lats) and into the triceps.",avoid:"Arching your lower back to fake depth. Keep your ribs down.",tempo:"Hold 30 s · slow breaths"},
+ {id:"pullapart",yt:"rqrC3CGPLYU",s:0,e:23.5,name:"Band Pull-Apart",video:"Band Pull aparts",sets:3,reps:"15",bw:true,
+  cues:["Grab the band so it already has some tension at the start.","Pull it apart until it reaches your sternum.","At the end, squeeze your shoulder blades as if pinching a pencil between them."],
+  feel:"Your upper back muscles squeezing.",avoid:"",tempo:"Tempo 1 out · 1 hold · 2 back"},
+ {id:"elevpush",yt:"05b8XPyLjK0",s:8.5,e:23.5,name:"Elevated Push-Up",video:"Elevated hands Push Up",sets:3,reps:"10",bw:true,
+  cues:["Put your hands on a rack bar, bench, couch or table.","Hands just outside shoulder width.","Lower until your chest touches the surface, every rep.","If you can only get halfway down, use a higher surface."],
+  feel:"",avoid:"Half reps. Raise the surface instead.",tempo:"Tempo 2 down · 1 up"},
+ {id:"dbrow",yt:"-iO2ZBSD1xw",s:0,e:22.5,name:"Bent-Over DB Row",video:"Bent Over DB Row",sets:3,reps:"10",bw:false,
+  cues:["Sit your hips back toward the wall behind you.","Keep the dumbbells close to your body, not out in front and far away.","Row the dumbbells back toward your hips.","Squeeze your back at the end of each rep."],
+  feel:"Your back squeezing at the top.",avoid:"Letting the dumbbells drift away from your body.",tempo:"Tempo 1 up · 1 hold · 2 down"},
+ {id:"kneelpress",yt:"2uQuLzrk_Eo",s:146.8,e:152.6,name:"Half-Kneeling DB Press",video:"Half Kneeling Single Arm DB Press Tutorial",sets:3,reps:"8/arm",bw:false,
+  cues:["Press with the arm on the same side as the knee that's down. Squeeze that glute so your hips stay locked out.","Brace your core and hold your free arm out to the side. If it drops, you're leaning.","Shoulder down away from your ear (shoulder blade toward your back pocket), then press overhead and lower.","Stay perfectly upright. If you start leaning, end the set."],
+  feel:"Your shoulder, plus the side of your core keeping you from leaning.",avoid:"Leaning side to side, or shrugging the weight up.",tempo:"Tempo 1 up · 2 down"},
+ {id:"helmsrow",yt:"s8XfN4biers",s:93.5,e:102.5,name:"Helms Underhand Row",video:"Helms Underhand Row",sets:3,reps:"10",bw:false,
+  cues:["Rest your forehead (or upper chest) on an incline bench and push your hips back to the wall behind you, like an RDL.","Underhand grip: palms face the wall in front of you.","Pull your shoulders down and back, then drive your elbows down and back toward your hips, close to your body.","Your hands are just hooks: lead with your elbows and keep your hands in line with them."],
+  feel:"Glutes and hamstrings loaded from the hinge; your back doing the rowing.",avoid:"Pulling straight up with your hands.",tempo:"Tempo 1 up · 1 hold · 2 down"},
+ {id:"lateral",yt:"FDreHfmyq5c",s:0,e:22.2,name:"DB Lateral Raise",video:"Standing DB Side Lateral Raise",sets:3,reps:"12",bw:false,
+  cues:["Stagger your feet and lean your torso slightly forward.","Push your hands out toward the corners of the room.","Raise the dumbbells to about ear level.","On the way down, stop a few inches before your legs."],
+  feel:"",avoid:"",tempo:"Tempo 1 up · 3 down"},
+ {id:"skull",yt:"iFrvIcOxdnk",s:25,e:37,name:"DB Skullcrusher",video:"DB Skullcrusher Tutorial",sets:3,reps:"10",bw:false,
+  cues:["Lie back with the dumbbells up and your hands in line with your shoulders.","Lock your upper arms and shoulders in place; only your elbows bend.","Bend your elbows to lower the dumbbells to about your skull.","Straighten back up and squeeze your triceps. You don't need heavy weight."],
+  feel:"Triceps squeezing at the top.",avoid:"Moving your shoulders. That shifts the work to your lats.",tempo:"Tempo 3 down · 1 up"}
+];
+const FULL=[
+ {id:"hip9090",yt:"HTmGVp_sxKs",s:0,e:34,name:"Hip 90/90",video:"Hip 90 90",sets:2,reps:"6/side",bw:true,
+  cues:["Line up your front heel with your back knee and back heel.","Transfer slowly from one side to the other.","Keep your core stable.","Actively move through your hips and feel them rotate."],
+  feel:"Your hips rotating.",avoid:"Going fast and flopping over without using your hips.",tempo:"Slow and controlled"},
+ {id:"hollowpull",yt:"iQxYUPymBYo",s:43.5,e:54.5,name:"Hollow Hold Pullover",video:"Hollow Hold Pullover",sets:3,reps:"8",bw:false,
+  cues:["Push your lower back into the floor as hard as you can, as if pinning a hand under it.","Core tight, legs straight up.","Holding a weight (or a ball, or nothing at first), reach behind your head to touch the floor, then bring it back.","Only your arms and shoulder blades move; your lower back stays down the whole time."],
+  feel:"Hard. If it isn't, you're not doing it right.",avoid:"Arching your back or letting your chest rise as the weight goes overhead.",tempo:"Tempo 3 back · 2 over"},
+ {id:"gbrdl",yt:"dFb-cNLRtJ0",s:0,e:33.5,name:"Glute-Bias DB RDL",video:"Glute Bias DB RDL 2",sets:3,reps:"10",bw:false,
+  cues:["Keep a soft bend in your knees; don't lock your legs out.","Push your hips back to the wall behind you, letting your knees bend a little more than a normal RDL.","Sit back into your hips as you lower.","From the bottom, pinch your glutes together to stand back up."],
+  feel:"Glutes. Straighter legs shift it to your hamstrings.",avoid:"Locking your knees out.",tempo:"Tempo 3 down · 1 up"},
+ {id:"standpress",yt:"HAcqhLcY1yg",s:0,e:16.5,name:"Standing DB Shoulder Press",video:"Standing DB Shoulder Press",sets:3,reps:"10",bw:false,
+  cues:["Elbows at about 45°.","Lower the dumbbells to just below chin level.","At the top, keep a very soft bend in your elbows."],
+  feel:"",avoid:"Overextending your elbows at the top.",tempo:"Tempo 1 up · 2 down"},
+ {id:"revlunge",yt:"Rv4P4cetZjQ",s:10.5,e:16,name:"Supported Reverse Lunge",video:"Supported Reverse Lunge",sets:3,reps:"8/leg",bw:false,
+  cues:["Support yourself with the hand on the same side as the leg stepping back, on something about hip height, a bit to the side and in front.","Hold the dumbbell in the other hand.","Lean forward slightly and step back, tapping the back knee down if you can.","Stand all the way back up."],
+  feel:"",avoid:"A support so high that you're reaching up to it at the bottom.",tempo:"Tempo 2 down · 1 up"},
+ {id:"widerow",yt:"yIZYTVUBH0M",s:63,e:73,name:"1-Arm Elbow-Wide Row",video:"1 arm elbow wide row",sets:3,reps:"10/arm",bw:false,
+  cues:["Push your hips back with a slight bend in your knees, one hand on something for support.","Row with your elbow going out and up, elbow in line with your wrist.","At the bottom, reach toward the floor in front of you for a full stretch.","At the top, squeeze your upper back like pinching a pencil between your shoulder blades."],
+  feel:"Your upper back.",avoid:"Locking your knees out.",tempo:"Tempo 1 up · 1 hold · 2 down"},
+ {id:"heelgoblet",yt:"hVQ1glE0yLQ",s:117.5,e:130.3,name:"Heel-Elevated Goblet Squat",video:"Heel Elevated Goblet Squat Tutorial",sets:3,reps:"10",bw:false,
+  cues:["Heels up on a plate (or stacked plates), toes on the floor.","Weight at your chest, elbows straight down, armpits squeezed, core tight.","Butt goes back first, then drop your hips straight down; let your knees travel over your toes while keeping them out.","Go low, bringing your hamstrings toward your calves, then stand back up."],
+  feel:"Quads.",avoid:"Knees caving in.",tempo:"Tempo 3 down · 1 up"},
+ {id:"reardelt",yt:"wbxcToQE168",s:0,e:14.8,name:"Bent-Over Rear Delt Extension",video:"Bent over rear delt ext",sets:3,reps:"12",bw:false,
+  cues:["Keep a soft bend in your arms the entire time.","Drive the back of the dumbbells toward the wall behind you."],
+  feel:"The back of your shoulders.",avoid:"",tempo:"Tempo 1 back · 1 hold · 2 down"}
+];
+const DAYS={legs:{title:"Leg Day v1",list:"PLceyAUiKKclxn3VE34Rlkcc-xc7Wqinl4",ex:LEGS},
+            upper:{title:"Upper Day v1",list:"PLceyAUiKKclzSP0-VMYWsRDRwrxQlFt-H",ex:UPPER},
+            full:{title:"Full Day v1",list:"PLceyAUiKKclyHJcwvIiEJ41wtSt-rYKYQ",ex:FULL}};
+const ALL=[...LEGS,...UPPER,...FULL];
+let day="legs", EX=LEGS;
+const YT="https://www.youtube.com/results?search_query=";
+
+// ---------- Helpers ----------
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+const dkey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const TODAY=dkey(new Date());
+const fmtDate=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})};
+const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const U=window.LANTERN.id, LK="lantern.wo."+U+"."; // per-lantern local keys
+
+// ---------- State ----------
+let cur=0, history=[], rest=90;
+let session=null;
+function blankSession(){
+  const s={date:TODAY,ex:{}};
+  return fillSession(s);
+}
+// Sessions hold every day's exercises (ids are unique across days); older sessions only have leg ids.
+function fillSession(s){
+  ALL.forEach(e=>{ if(!s.ex[e.id]) s.ex[e.id]={sets:Array.from({length:e.sets},()=>({w:"",r:"",done:false}))}; });
+  return s;
+}
+session=blankSession();
+const st0=lsGet(LK+"ui"); if(st0){ if(DAYS[st0.day]){ day=st0.day; EX=DAYS[day].ex; } if(typeof st0.cur==="number"&&st0.cur>=0&&st0.cur<EX.length) cur=st0.cur; if(st0.rest) rest=st0.rest; }
+
+// ---------- Storage: Lanterncorps Firebase (own branch per lantern), local fallback ----------
+// Workout logs live under lantern_workouts_v1/<lantern>, NOT inside the Battery Log node, so the main app's
+// full-node saves can never wipe them. Finishing writes a small flag that v2.html turns into the checkmark.
+const FIREBASE={apiKey:"AIzaSyDMxcuNZmdic9AZIL5uQwvGdxKnGW2Uq_c",authDomain:"bao-buddy.firebaseapp.com",
+  databaseURL:"https://bao-buddy-default-rtdb.firebaseio.com",projectId:"bao-buddy",storageBucket:"bao-buddy.firebasestorage.app",
+  messagingSenderId:"167816448505",appId:"1:167816448505:web:35d57633f3caea0ba71528"};
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),ms))]);
+const store={ref:null,mode:"local",
+  async init(){
+    try{
+      if(!window.firebase) return;
+      if(!firebase.apps.length) firebase.initializeApp(FIREBASE);
+      this.ref=firebase.database().ref("lantern_workouts_v1/"+U); this.mode="db";
+    }catch(e){ this.mode="local"; }
+  },
+  async loadAll(){
+    if(this.mode==="db"){
+      try{
+        const snap=await withTimeout(this.ref.once("value"),8000), v=snap.val()||{};
+        const sessions=Object.values(v.sessions||{});
+        // One-time import of logs from the standalone workout page (same github.io origin), for Lantern 0104 only.
+        const legacy=lsGet("legday.sessions");
+        if(U==="p1"&&!sessions.length&&Array.isArray(legacy)&&legacy.length&&!lsGet(LK+"imported")){
+          for(const s of legacy){ await this.ref.child("sessions/"+s.date).set(JSON.parse(JSON.stringify(s))); sessions.push(s); }
+          lsSet(LK+"imported",true);
+        }
+        return {sessions,settings:v.settings||null,finished:v.finished||{}};
+      }catch(e){ this.mode="local"; }
+    }
+    return {sessions:lsGet(LK+"sessions")||[],settings:null,finished:{}};
+  },
+  async save(s){
+    const all=(lsGet(LK+"sessions")||[]).filter(x=>x.date!==s.date); all.push(s); lsSet(LK+"sessions",all);
+    if(this.mode==="db"){ await withTimeout(this.ref.child("sessions/"+s.date).set(JSON.parse(JSON.stringify(s))),8000); }
+  },
+  async saveSettings(o){ if(this.mode==="db"){ try{await this.ref.child("settings").set(o)}catch(e){} } },
+  async markFinished(date,info){
+    if(this.mode!=="db") throw new Error("offline");
+    await withTimeout(this.ref.child("finished/"+date).set(info),8000);
+  }
+};
+
+let saveTimer=null, saving=Promise.resolve();
+function queueSave(){
+  $("saved").textContent="Saving…";
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    saving=saving.then(()=>store.save(session)).then(()=>{$("saved").textContent=store.mode==="db"?"Saved to Battery Log":"Saved on this device"})
+      .catch(()=>{$("saved").textContent="Couldn't save. Check your connection; your entries are still here."});
+  },600);
+}
+
+function prevFor(exId){
+  const past=history.filter(s=>s.date<TODAY&&s.ex&&s.ex[exId]&&s.ex[exId].sets.some(x=>x.r!==""||x.w!=="")).sort((a,b)=>a.date<b.date?1:-1);
+  return past[0]||null;
+}
+
+// ---------- Render ----------
+function renderStrip(){
+  const strip=$("strip"); strip.innerHTML=""; strip.style.gridTemplateColumns="repeat("+EX.length+",1fr)";
+  EX.forEach((e,i)=>{
+    const b=document.createElement("button"); b.type="button"; b.className="chip"; b.id="chip-"+e.id;
+    const sets=session.ex[e.id].sets; if(sets.length&&sets.every(x=>x.done)) b.classList.add("done");
+    b.setAttribute("aria-current",i===cur?"true":"false");
+    const n=document.createElement("b"); n.textContent=i+1; const s=document.createElement("small"); s.textContent=e.name.replace("Bodyweight ","BW ").replace("Supported ","");
+    b.append(n,s); b.onclick=()=>go(i); strip.appendChild(b);
+  });
+  const doneCount=EX.filter(e=>{const s=session.ex[e.id].sets;return s.length&&s.every(x=>x.done)}).length;
+  $("progress").textContent=doneCount+" of "+EX.length+" done";
+}
+function renderExercise(){
+  const e=EX[cur];
+  $("exname").textContent=e.name;
+  $("exrx").innerHTML=""; const b=document.createElement("b"); b.textContent=e.sets+" × "+e.reps; $("exrx").append(b, document.createTextNode(e.bw?"  bodyweight":"  dumbbell"));
+  const ol=$("cues"); ol.innerHTML=""; e.cues.forEach(c=>{const li=document.createElement("li");li.textContent=c;ol.appendChild(li)});
+  $("feel").innerHTML="<b>Feel it</b>"; $("feel").append(document.createTextNode(e.feel));
+  $("avoid").innerHTML="<b>Avoid</b>"; $("avoid").append(document.createTextNode(e.avoid));
+  $("feel").hidden=!e.feel; $("avoid").hidden=!e.avoid; // blank when the video doesn't say
+  $("tempo").textContent=e.tempo;
+  $("watch").href=e.yt?"https://www.youtube.com/watch?v="+e.yt+"&t="+Math.floor(e.s)+"s":YT+encodeURIComponent("Eric Roberts "+e.video);
+  $("wlabel").textContent=e.bw?"+Lbs":"Lbs";
+  $("prev").disabled=cur===0; $("next").textContent=cur===EX.length-1?"Finish ✓":"Next →";
+  renderRows(); renderStrip();
+  $("pause").hidden=!yt.show(e); $("pause").textContent="Pause";
+  lsSet(LK+"ui",{cur,rest,day});
+}
+function renderRows(){
+  const e=EX[cur], data=session.ex[e.id], last=prevFor(e.id), rows=$("rows"); rows.innerHTML="";
+  data.sets.forEach((s,i)=>{
+    const r=document.createElement("div"); r.className="row"+(s.done?" isdone":"");
+    const n=document.createElement("span"); n.className="n"; n.textContent=i+1;
+    const p=document.createElement("span"); p.className="prev";
+    const ls=last&&last.ex[e.id].sets[i];
+    p.textContent=ls&&(ls.r!==""||ls.w!=="")?((ls.w!==""?ls.w:(e.bw?"BW":"–"))+" × "+(ls.r||"–")):"—";
+    if(ls) p.title=fmtDate(last.date);
+    const w=document.createElement("input"); w.id="w-"+e.id+"-"+i; w.inputMode="decimal"; w.placeholder=ls&&ls.w!==""?ls.w:(e.bw?"BW":"lbs"); w.value=s.w; w.setAttribute("aria-label","Set "+(i+1)+" weight");
+    const rp=document.createElement("input"); rp.id="r-"+e.id+"-"+i; rp.inputMode="numeric"; rp.placeholder=String(parseInt(e.reps)); rp.value=s.r; rp.setAttribute("aria-label","Set "+(i+1)+" reps");
+    w.oninput=()=>{s.w=w.value.trim();queueSave()}; rp.oninput=()=>{s.r=rp.value.trim();queueSave()};
+    const t=document.createElement("button"); t.type="button"; t.className="tick"; t.textContent="✓"; t.setAttribute("aria-label","Mark set "+(i+1)+" done"); t.setAttribute("aria-pressed",s.done?"true":"false");
+    t.onclick=()=>{
+      unlockAudio();
+      s.done=!s.done;
+      if(s.done){ if(s.r==="") s.r=rp.placeholder; if(s.w===""&&w.placeholder&&w.placeholder!=="lbs"&&w.placeholder!=="BW") s.w=w.placeholder; }
+      queueSave(); renderRows(); renderStrip();
+      if(s.done){ const allDone=data.sets.every(x=>x.done); timer.start(rest, allDone&&cur<EX.length-1?"Next: "+EX[cur+1].name:"Rest"); }
+    };
+    r.append(n,p,w,rp,t); rows.appendChild(r);
+  });
+}
+function go(i){ if(i<0||i>=EX.length) return; cur=i; renderExercise(); window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}); }
+$("prev").onclick=()=>go(cur-1);
+$("next").onclick=()=>{ if(cur<EX.length-1) go(cur+1); else finish(); };
+
+// ---------- Finish: flag today as trained, then head back to Battery Log to charge the ring ----------
+const BACK="v2.html?tab="+U;
+let finishedToday=false;
+function renderFinish(){
+  const b=$("finish");
+  b.classList.toggle("charged",finishedToday);
+  b.textContent=finishedToday?"Ring charged ✓ Back to Battery Log":"Finish Workout";
+  $("finishnote").textContent=finishedToday?"Today's workout is checked off. Extra sets you log still save.":"Charges your ring: checks off today's workout in Battery Log.";
+}
+async function finish(){
+  if(finishedToday){ location.href=BACK; return; }
+  const doneSets=EX.reduce((n,e)=>n+session.ex[e.id].sets.filter(x=>x.done).length,0);
+  if(doneSets===0&&!confirm("No sets checked off yet. Finish the workout anyway?")) return;
+  const b=$("finish"); b.disabled=true; b.textContent="Charging…";
+  try{
+    clearTimeout(saveTimer); await saving;
+    session.finished=true; session.day=day;
+    await store.save(session);
+    await store.markFinished(TODAY,{day,sets:doneSets,at:Date.now(),applied:false});
+    finishedToday=true; renderFinish();
+    location.href=BACK;
+  }catch(e){
+    $("finishnote").textContent="Couldn't reach Battery Log, so the ring isn't charged yet. Your sets are saved on this phone; check your connection and tap again.";
+    b.textContent="Finish Workout";
+  }finally{ b.disabled=false; }
+}
+$("finish").onclick=finish;
+$("addset").onclick=()=>{ session.ex[EX[cur].id].sets.push({w:"",r:"",done:false}); queueSave(); renderRows(); renderStrip(); };
+$("rmset").onclick=()=>{ const s=session.ex[EX[cur].id].sets; if(s.length>1){ s.pop(); queueSave(); renderRows(); renderStrip(); } };
+
+function renderRestPick(){ document.querySelectorAll(".restpick button").forEach(b=>b.setAttribute("aria-pressed",String(Number(b.dataset.s)===rest))); }
+function renderDay(){
+  const d=DAYS[day]; $("title").textContent=d.title; document.title=d.title+" · "+window.LANTERN.callsign;
+  $("plink").href="https://www.youtube.com/playlist?list="+d.list;
+  document.querySelectorAll(".daypick button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.d===day)));
+}
+document.querySelectorAll(".daypick button").forEach(b=>b.onclick=()=>{ if(b.dataset.d===day) return; day=b.dataset.d; EX=DAYS[day].ex; cur=0; renderDay(); go(0); });
+document.querySelectorAll(".restpick button").forEach(b=>b.onclick=()=>{ rest=Number(b.dataset.s); renderRestPick(); lsSet(LK+"ui",{cur,rest,day}); store.saveSettings({rest}); });
+
+// ---------- Rest timer ----------
+let actx=null;
+function unlockAudio(){ try{ if(!actx){ const C=window.AudioContext||window.webkitAudioContext; if(C) actx=new C(); } if(actx&&actx.state==="suspended") actx.resume(); }catch(e){} wake(); }
+function beep(){ if(!actx) return; try{ [0,.22,.44].forEach((t,i)=>{ const o=actx.createOscillator(), g=actx.createGain(); o.frequency.value=i===2?1175:880; o.type="sine";
+  g.gain.setValueAtTime(.0001,actx.currentTime+t); g.gain.exponentialRampToValueAtTime(.35,actx.currentTime+t+.02); g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+t+.18);
+  o.connect(g).connect(actx.destination); o.start(actx.currentTime+t); o.stop(actx.currentTime+t+.2); }); }catch(e){} }
+const timer={end:0,total:0,iv:null,
+  start(sec,label){ this.total=sec; this.end=Date.now()+sec*1000; $("restlbl").textContent=label; $("restbar").classList.add("on"); $("restbar").classList.remove("over"); this.fired=false; clearInterval(this.iv); this.iv=setInterval(()=>this.tick(),200); this.tick(); },
+  add(s){ if(!this.iv) return; this.end+=s*1000; this.total=Math.max(this.total+s,1); if(this.end>Date.now()){ $("restbar").classList.remove("over"); this.fired=false; } this.tick(); },
+  stop(){ clearInterval(this.iv); this.iv=null; $("restbar").classList.remove("on","over"); },
+  tick(){ const left=Math.round((this.end-Date.now())/1000);
+    const a=Math.abs(left); $("restt").textContent=(left<0?"+":"")+Math.floor(a/60)+":"+pad(a%60);
+    $("restprog").style.transform="scaleX("+Math.max(0,Math.min(1,left/this.total))+")";
+    if(left<=0&&!this.fired){ this.fired=true; $("restbar").classList.add("over"); $("restlbl").textContent="Go: next set"; beep(); try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){} }
+    if(left<-90) this.stop(); }
+};
+$("rminus").onclick=()=>timer.add(-15); $("rplus").onclick=()=>timer.add(15); $("rskip").onclick=()=>timer.stop();
+
+let lock=null;
+async function wake(){ try{ if(!lock&&navigator.wakeLock&&document.visibilityState==="visible"){ lock=await navigator.wakeLock.request("screen"); lock.addEventListener("release",()=>{lock=null}); } }catch(e){} }
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"){ wake(); if(timer.iv) timer.tick(); } });
+
+// ---------- YouTube demo: loops e.s..e.e of the real video; any failure shows the "video unavailable" note ----------
+const yt={api:null,player:null,ready:false,failed:false,playing:false,paused:false,ex:null,to:0,
+  on(){ return $("stage").classList.contains("has-vid")&&this.ready; },
+  load(){
+    if(!this.api) this.api=new Promise((res,rej)=>{
+      if(window.YT&&window.YT.Player) return res();
+      window.onYouTubeIframeAPIReady=res;
+      const s=document.createElement("script"); s.src="https://www.youtube.com/iframe_api"; s.onerror=rej; document.head.appendChild(s);
+      setTimeout(rej,8000);
+    });
+    return this.api;
+  },
+  show(e){
+    this.ex=e; this.playing=false; this.paused=false; clearTimeout(this.to);
+    if(!e.yt||this.failed){ this.off(); return false; }
+    $("stage").classList.add("has-vid");
+    this.load().then(()=>{
+      if(this.ex!==e) return;
+      if(!this.player) this.player=new window.YT.Player("ytp",{videoId:e.yt,
+        playerVars:{autoplay:1,mute:1,controls:0,playsinline:1,rel:0,disablekb:1,fs:0,iv_load_policy:3,start:Math.floor(e.s)},
+        events:{onReady:ev=>{ this.ready=true; ev.target.mute(); this.cue(); },
+                onStateChange:ev=>this.state(ev.data), onError:()=>this.fail()}});
+      else if(this.ready) this.cue();
+    }).catch(()=>this.fail());
+    this.to=setTimeout(()=>{ if(!this.playing&&this.ex===e) this.fail(); },12000);
+    return true;
+  },
+  cue(){ const e=this.ex; if(!e||!e.yt||this.failed) return; this.player.loadVideoById({videoId:e.yt,startSeconds:e.s}); this.player.mute(); },
+  state(d){
+    if(d===window.YT.PlayerState.PLAYING){ this.playing=true; clearTimeout(this.to); try{ this.player.unloadModule("captions"); }catch(e){} }
+    if(d===window.YT.PlayerState.ENDED&&this.ex){ this.player.seekTo(this.ex.s,true); this.player.playVideo(); }
+  },
+  tick(){
+    if(!this.on()||this.paused||!this.ex||document.hidden) return;
+    const st=this.player.getPlayerState();
+    if(st===window.YT.PlayerState.PAUSED||st===window.YT.PlayerState.CUED){ this.player.playVideo(); return; }
+    const t=this.player.getCurrentTime();
+    if(t>=this.ex.e||t<this.ex.s-1) this.player.seekTo(this.ex.s,true);
+  },
+  off(){ $("stage").classList.remove("has-vid"); if(this.ready) this.player.pauseVideo(); },
+  fail(){ if(this.failed) return; this.failed=true; clearTimeout(this.to); this.off(); $("pause").hidden=true; }
+};
+setInterval(()=>yt.tick(),150);
+$("pause").onclick=()=>{ if(!yt.on()) return; yt.paused=!yt.paused; yt.paused?yt.player.pauseVideo():yt.player.playVideo(); $("pause").textContent=yt.paused?"Play":"Pause"; };
+
+// ---------- Boot ----------
+$("today").textContent=fmtDate(TODAY);
+$("callsign").textContent=window.LANTERN.callsign; $("back").href="v2.html?tab="+U;
+renderRestPick();
+history=lsGet(LK+"sessions")||[];
+const localToday=history.find(s=>s.date===TODAY); if(localToday) session=fillSession(localToday);
+renderDay();
+renderExercise();
+(async()=>{
+  await store.init();
+  const {sessions,settings,finished}=await store.loadAll();
+  finishedToday=!!(finished&&finished[TODAY]); renderFinish();
+  if(store.mode==="db"){
+    history=sessions;
+    if(settings&&settings.rest&&!st0){ rest=settings.rest; renderRestPick(); }
+    const t=sessions.find(s=>s.date===TODAY);
+    if(t) session=fillSession(t);
+    renderRows(); renderStrip();
+    $("saved").textContent="Synced with Battery Log";
+  } else { $("saved").textContent="Saving on this device"; }
+})();
+})();
+</script>
+
+</body>
+</html>
