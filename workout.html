@@ -302,6 +302,12 @@ const DAYS={legs:{title:"Leg Day v1",list:"PLceyAUiKKclxn3VE34Rlkcc-xc7Wqinl4",e
 const ALL=[...LEGS,...UPPER,...FULL];
 let day="legs", EX=LEGS;
 const YT="https://www.youtube.com/results?search_query=";
+// Rep range for working sets: show 8–12 and start each set at 8, or at last time's reps for that set if higher.
+// Warm-ups (5 reps) keep their fixed count.
+const REP_MIN=8, REP_MAX=12;
+const isRange=e=>parseInt(e.reps)!==5;
+const repsLabel=e=>isRange(e)?REP_MIN+"–"+REP_MAX+(e.reps.match(/\/\w+$/)||[""])[0]:e.reps;
+const startReps=(e,last)=>{ if(!isRange(e)) return parseInt(e.reps); const n=parseInt(last&&last.r); return n>REP_MIN?n:REP_MIN; };
 
 // ---------- Helpers ----------
 const $=id=>document.getElementById(id);
@@ -404,7 +410,7 @@ function renderStrip(){
 function renderExercise(){
   const e=EX[cur];
   $("exname").textContent=e.name;
-  $("exrx").innerHTML=""; const b=document.createElement("b"); b.textContent=e.sets+" × "+e.reps; $("exrx").append(b, document.createTextNode(e.bw?"  bodyweight":"  dumbbell"));
+  $("exrx").innerHTML=""; const b=document.createElement("b"); b.textContent=e.sets+" × "+repsLabel(e); $("exrx").append(b, document.createTextNode(e.bw?"  bodyweight":"  dumbbell"));
   const ol=$("cues"); ol.innerHTML=""; e.cues.forEach(c=>{const li=document.createElement("li");li.textContent=c;ol.appendChild(li)});
   $("feel").innerHTML="<b>Feel it</b>"; $("feel").append(document.createTextNode(e.feel));
   $("avoid").innerHTML="<b>Avoid</b>"; $("avoid").append(document.createTextNode(e.avoid));
@@ -432,7 +438,7 @@ function renderRows(){
     p.textContent=ls&&(ls.r!==""||ls.w!=="")?((ls.w!==""?ls.w:(e.bw?"BW":"–"))+" × "+(ls.r||"–")):"—";
     if(ls) p.title=fmtDate(last.date);
     const w=document.createElement("input"); w.id="w-"+e.id+"-"+i; w.inputMode="decimal"; w.placeholder=ls&&ls.w!==""?ls.w:(e.bw?"BW":"lbs"); w.value=s.w; w.setAttribute("aria-label","Set "+(i+1)+" weight");
-    const rp=document.createElement("input"); rp.id="r-"+e.id+"-"+i; rp.inputMode="numeric"; rp.placeholder=String(parseInt(e.reps)); rp.value=s.r; rp.setAttribute("aria-label","Set "+(i+1)+" reps");
+    const rp=document.createElement("input"); rp.id="r-"+e.id+"-"+i; rp.inputMode="numeric"; rp.placeholder=String(startReps(e,ls)); rp.value=s.r; rp.setAttribute("aria-label","Set "+(i+1)+" reps");
     w.oninput=()=>{s.w=w.value.trim();queueSave()}; rp.oninput=()=>{s.r=rp.value.trim();queueSave()};
     const t=document.createElement("button"); t.type="button"; t.className="tick"; t.textContent="✓"; t.setAttribute("aria-label","Mark set "+(i+1)+" done"); t.setAttribute("aria-pressed",s.done?"true":"false");
     t.onclick=()=>{
