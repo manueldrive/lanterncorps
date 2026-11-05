@@ -805,6 +805,7 @@ function sanitizeState() {
     if (!Array.isArray(state.data[u].workoutDays)) {
       state.data[u].workoutDays = []; // Fallback set to 0 days
     }
+    if (state.data[u].weighMode !== "number" && state.data[u].weighMode !== "check") state.data[u].weighMode = "number";
     if (state.data[u].weight === undefined) {
       state.data[u].weight = "";
     }
@@ -841,7 +842,7 @@ function evaluateDayRecord(uData, dateStr) {
     if (!sourceDone[reqId]) missed.push(reqId);
   });
 
-  var hasWeight = sourceWeight !== undefined && String(sourceWeight).trim() !== "";
+  var hasWeight = (sourceWeight !== undefined && String(sourceWeight).trim() !== "") || !!sourceDone.weighed;
   if (!hasWeight) missed.push("weight");
 
   var passed = missed.length === 0;
@@ -872,12 +873,27 @@ function syncDayToHistory(userId, dateStr) {
   uData.history[dateStr].completedCount = evalResult.completedCount;
 }
 
+// Houses (manueldrive/houses) reads and writes these same records for 0104 and 0211.
+// Save only the parts that changed, so neither app overwrites the other's latest taps.
+var lastSynced = {};
+var lastSyncedDate = null;
+var persistLoaded = false;
+
 function savePersisted() {
   sanitizeState();
-  dbRef.set({
-    data: state.data,
-    lastActiveDate: state.lastActiveDate
+  if (!persistLoaded) return; // never write before the first read
+  var updates = {};
+  Object.keys(USERS).forEach(function(u) {
+    var json = JSON.stringify(state.data[u]);
+    if (lastSynced[u] === json) return;
+    lastSynced[u] = json;
+    updates["data/" + u] = JSON.parse(json);
   });
+  if (state.lastActiveDate !== lastSyncedDate) {
+    lastSyncedDate = state.lastActiveDate;
+    updates.lastActiveDate = state.lastActiveDate;
+  }
+  if (Object.keys(updates).length) dbRef.update(updates);
 }
 
 function initPersistence() {
@@ -891,6 +907,9 @@ function initPersistence() {
     }
 
     sanitizeState();
+    Object.keys(USERS).forEach(function(u) { lastSynced[u] = JSON.stringify(state.data[u]); });
+    lastSyncedDate = (saved && saved.lastActiveDate) || null;
+    persistLoaded = true;
 
     if (state.lastActiveDate && state.lastActiveDate !== today) {
       Object.keys(USERS).forEach(function(u) {
@@ -1216,7 +1235,13 @@ function renderSettingsModal() {
     '<div class="goal-input-row">' +
       '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-drumstick-bite" style="width:16px"></i> Track Protein:</span>' +
       '<button class="toggle-switch-btn ' + (hasProteinTrack ? 'on' : '') + '" data-action="toggle-protein" data-user="' + userId + '"><span class="toggle-knob"></span></button>' +
-    '</div>';
+    '</div>' +
+
+    '<div class="goal-input-row">' +
+      '<span style="font-size:12px; color:#cbd5e1"><i class="fa-solid fa-weight-scale" style="width:16px"></i> Log Weight Number:</span>' +
+      '<button class="toggle-switch-btn ' + (uData.weighMode !== "check" ? 'on' : '') + '" data-action="toggle-weigh-mode" data-user="' + userId + '" aria-label="Log weight number"><span class="toggle-knob"></span></button>' +
+    '</div>' +
+    '<div style="font-size:11px; color:#94a3b8; margin:-4px 0 10px;">' + (uData.weighMode === "check" ? 'Off: just check off that you weighed in. Keep the number in your own app.' : 'On: type your weight each day.') + '</div>';
 
     if (hasProteinTrack) {
       html += '<div class="goal-input-row" style="margin-top:-4px; margin-bottom:14px; padding-left:20px;">' +
@@ -1495,7 +1520,19 @@ function renderUserPanel(userId) {
       return;
     }
 
-    if (p.type === "input") {
+    if (p.type === "input" && uData.weighMode === "check") {
+      var weighedDone = !!activeDoneMap.weighed;
+      html += '<div class="protocol-card ' + (weighedDone ? activeClass : "") + '">' +
+        '<div class="protocol-icon-box" style="' + (weighedDone ? 'color:' + borderAccent + ';' : '') + '"><i class="' + p.icon + '"></i></div>' +
+        '<div style="flex:1">' +
+          '<div style="font-weight:700; font-size:15px">Weighed In</div>' +
+          '<div style="font-size:11px; color:#94a3b8">Number kept in your own app</div>' +
+        '</div>' +
+        '<button type="button" data-action="toggle-check" data-user="' + userId + '" data-protocol="weighed" data-date="' + activeDate + '" class="check-btn" aria-label="Weighed in" style="' + (weighedDone ? 'background:' + borderAccent + '; border-color:' + borderAccent + '; color:#000;' : '') + '">' +
+          (weighedDone ? '<i class="fa-solid fa-check"></i>' : '') +
+        '</button>' +
+      '</div>';
+    } else if (p.type === "input") {
       html += '<div class="protocol-card">' +
         '<div class="protocol-icon-box"><i class="' + p.icon + '"></i></div>' +
         '<div style="flex:1">' +
@@ -1540,7 +1577,7 @@ function renderUserPanel(userId) {
     '</div>' +
     '<div class="hud-stat">' +
       '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Weight</div>' +
-      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:#fff">' + (activeWeight || '--') + '</div>' +
+      '<div style="font-family:\'Share Tech Mono\'; font-weight:800; font-size:17px; color:#fff">' + (uData.weighMode === "check" ? (activeDoneMap.weighed ? 'DONE' : '--') : (activeWeight || '--')) + '</div>' +
     '</div>' +
     '<div class="hud-stat">' +
       '<div style="font-size:10px; color:#94A3B8; text-transform:uppercase">Workout Day</div>' +
@@ -1640,6 +1677,13 @@ document.getElementById("root").addEventListener("click", function(e) {
       state.settingsModalUser = null;
       render();
     }
+  } else if (action === "toggle-weigh-mode") {
+    var uWm = el.dataset.user;
+    sanitizeState();
+    state.data[uWm].weighMode = state.data[uWm].weighMode === "check" ? "number" : "check";
+    syncDayToHistory(uWm, state.selectedDate[uWm] || todayDateString());
+    savePersisted();
+    render();
   } else if (action === "toggle-protein") {
     var uP = el.dataset.user;
     sanitizeState();
