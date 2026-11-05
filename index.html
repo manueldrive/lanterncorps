@@ -255,6 +255,21 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
+  .plan-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .plan-day { width: 34px; font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700; color: #cbd5e1; }
+  .plan-seg { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .plan-seg button {
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.03);
+    color: #94a3b8;
+    border-radius: 6px;
+    padding: 6px 0;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
   .day-chip {
     flex: 1;
     border: 1px solid rgba(255,255,255,0.12);
@@ -378,6 +393,26 @@
     flex-shrink: 0;
     color: #6EE7B7;
   }
+
+  .train-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--train-accent, #00ff88);
+    color: var(--train-accent, #00ff88);
+    background: rgba(0, 0, 0, 0.35);
+    font-family: 'Orbitron', monospace;
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-decoration: none;
+    box-shadow: 0 0 12px rgba(0, 255, 136, 0.15);
+    white-space: nowrap;
+  }
+  .train-btn:hover { background: rgba(255, 255, 255, 0.06); }
 
   .check-btn {
     width: 32px;
@@ -701,6 +736,11 @@ var state = {
   lastActiveDate: null
 };
 
+(function() {
+  var t = new URLSearchParams(location.search).get("tab");
+  if (USERS[t]) state.activeTab = t;
+})();
+
 /* ---------------- Persistence ---------------- */
 var firebaseConfig = {
   apiKey: "AIzaSyDMxcuNZmdic9AZIL5uQwvGdxKnGW2Uq_c",
@@ -758,6 +798,9 @@ function sanitizeState() {
 
     if (!state.data[u].reflections || typeof state.data[u].reflections !== "object") {
       state.data[u].reflections = {};
+    }
+    if (!state.data[u].workoutPlan || typeof state.data[u].workoutPlan !== "object" || Array.isArray(state.data[u].workoutPlan)) {
+      state.data[u].workoutPlan = {};
     }
     if (!Array.isArray(state.data[u].workoutDays)) {
       state.data[u].workoutDays = []; // Fallback set to 0 days
@@ -863,12 +906,67 @@ function initPersistence() {
       savePersisted();
     }
     
+    mainLoaded = true;
+    applyFinishedWorkouts();
+
     var activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA")) {
       return;
     }
     render();
   });
+
+  Object.keys(USERS).forEach(function(u) {
+    workoutRef.child(u + "/finished").on("value", function(snap) {
+      finishedWorkouts[u] = snap.val() || {};
+      applyFinishedWorkouts();
+      var activeEl = document.activeElement;
+      if (!activeEl || (activeEl.tagName !== "INPUT" && activeEl.tagName !== "TEXTAREA")) render();
+    });
+  });
+}
+
+/* ---------------- Workout page link ---------------- */
+// workout.html writes lantern_workouts_v1/<lantern>/finished/<date> when a session is finished.
+// The first time this page sees that flag it checks off Completed Workout for that date, then marks the flag applied.
+var workoutRef = db.ref("lantern_workouts_v1");
+var finishedWorkouts = { p1: {}, p2: {} };
+var mainLoaded = false;
+var WORKOUT_NAMES = { legs: "Leg Day", upper: "Upper Day", full: "Full Day" };
+
+// Per-day plan: workoutPlan["d<jsDay>"] = "legs" | "upper" | "full". Missing = Custom (not linked to the workout page).
+// Keys are prefixed with "d" so Firebase never turns the object into an array.
+function getPlannedWorkout(uData, dateStr) {
+  var plan = uData.workoutPlan || {};
+  var p = plan["d" + new Date(dateStr + "T12:00:00").getDay()];
+  return WORKOUT_NAMES[p] ? p : null;
+}
+
+function applyFinishedWorkouts() {
+  if (!mainLoaded) return;
+  var changed = [];
+  Object.keys(USERS).forEach(function(u) {
+    var fin = finishedWorkouts[u] || {};
+    Object.keys(fin).forEach(function(dateStr) {
+      var f = fin[dateStr];
+      if (!f || f.applied) return;
+      sanitizeState();
+      if (dateStr === todayDateString()) {
+        state.data[u].done.workout = true;
+      } else {
+        if (!state.data[u].history[dateStr]) state.data[u].history[dateStr] = { done: {}, weight: "" };
+        if (!state.data[u].history[dateStr].done) state.data[u].history[dateStr].done = {};
+        state.data[u].history[dateStr].done.workout = true;
+      }
+      syncDayToHistory(u, dateStr);
+      workoutRef.child(u + "/finished/" + dateStr + "/applied").set(true);
+      changed.push(u);
+    });
+  });
+  if (changed.length) {
+    savePersisted();
+    playRingChargeSound(changed[0] === "p2");
+  }
 }
 
 /* ---------------- Canvas Starfield & Audio ---------------- */
@@ -1140,9 +1238,27 @@ function renderSettingsModal() {
         dayObj.label +
       '</button>';
     });
-  html += '</div>' +
+  html += '</div>';
 
-    '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:6px;"><i class="fa-solid fa-file-export" style="margin-right:4px"></i> Export Success History</div>' +
+  var selectedDays = DAYS_OF_WEEK.filter(function(d) { return (uData.workoutDays || []).indexOf(d.jsDay) !== -1; });
+  if (selectedDays.length) {
+    var planMap = uData.workoutPlan || {};
+    html += '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:4px;"><i class="fa-solid fa-dumbbell" style="margin-right:4px"></i> Workout Plan</div>' +
+      '<div style="font-size:11px; color:#94a3b8; margin-bottom:8px;">Pick a workout to add a TRAIN button that day. Custom keeps the plain checkbox for your own routine.</div>';
+    selectedDays.forEach(function(d) {
+      var cur = WORKOUT_NAMES[planMap["d" + d.jsDay]] ? planMap["d" + d.jsDay] : "custom";
+      html += '<div class="plan-row"><span class="plan-day">' + d.label + '</span><div class="plan-seg">';
+      [["legs", "Legs"], ["upper", "Upper"], ["full", "Full"], ["custom", "Custom"]].forEach(function(opt) {
+        var on = cur === opt[0];
+        html += '<button type="button" data-action="set-plan" data-user="' + userId + '" data-day="' + d.jsDay + '" data-plan="' + opt[0] + '" aria-pressed="' + on + '"' +
+          (on ? ' style="background:' + borderAccent + '; color:#020b08; border-color:' + borderAccent + ';"' : '') + '>' + opt[1] + '</button>';
+      });
+      html += '</div></div>';
+    });
+    html += '<div style="margin-bottom:18px;"></div>';
+  }
+
+  html += '<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:' + borderAccent + '; margin-bottom:6px;"><i class="fa-solid fa-file-export" style="margin-right:4px"></i> Export Success History</div>' +
     '<div style="display:flex; gap:8px;">' +
       '<button class="export-btn" data-action="export-log" data-user="' + userId + '" data-days="7"><i class="fa-solid fa-chart-simple"></i> Last 7 Days</button>' +
       '<button class="export-btn" data-action="export-log" data-user="' + userId + '" data-days="30"><i class="fa-solid fa-calendar-check"></i> Last 30 Days</button>' +
@@ -1392,12 +1508,21 @@ function renderUserPanel(userId) {
       '</div>';
     } else {
       var isDone = !!activeDoneMap[p.id];
+      var isWorkoutCard = p.id === "workout";
+      var trained = isWorkoutCard ? finishedWorkouts[userId][activeDate] : null;
+      var subtext = trained && trained.day ? "Trained: " + (WORKOUT_NAMES[trained.day] || trained.day) : p.subtext;
+      var planned = isWorkoutCard ? getPlannedWorkout(uData, activeDate) : null;
+      if (isWorkoutCard && !trained && planned) subtext = WORKOUT_NAMES[planned] + " planned";
+      var trainBtn = (isWorkoutCard && !isViewingPast && planned)
+        ? '<a class="train-btn" style="--train-accent:' + borderAccent + '" href="workout.html?u=' + userId + '&d=' + planned + '"><i class="fa-solid fa-dumbbell"></i>' + (isDone ? 'LOG' : 'TRAIN') + '</a>'
+        : '';
       html += '<div class="protocol-card ' + (isDone ? activeClass : "") + '">' +
         '<div class="protocol-icon-box" style="' + (isDone ? 'color:' + borderAccent + ';' : '') + '"><i class="' + p.icon + '"></i></div>' +
         '<div style="flex:1">' +
           '<div style="font-weight:700; font-size:15px">' + p.label + '</div>' +
-          '<div style="font-size:11px; color:#94a3b8">' + p.subtext + '</div>' +
+          '<div style="font-size:11px; color:#94a3b8">' + subtext + '</div>' +
         '</div>' +
+        trainBtn +
         '<button type="button" data-action="toggle-check" data-user="' + userId + '" data-protocol="' + p.id + '" data-date="' + activeDate + '" class="check-btn" style="' + (isDone ? 'background:' + borderAccent + '; border-color:' + borderAccent + '; color:#000;' : '') + '">' +
           (isDone ? '<i class="fa-solid fa-check"></i>' : '') + 
         '</button>' +
@@ -1536,6 +1661,15 @@ document.getElementById("root").addEventListener("click", function(e) {
     }
     state.data[uD].workoutDays = days;
     syncDayToHistory(uD, state.selectedDate[uD] || todayDateString());
+    savePersisted();
+    render();
+  } else if (action === "set-plan") {
+    var uPl = el.dataset.user;
+    sanitizeState();
+    var plan = state.data[uPl].workoutPlan || {};
+    if (el.dataset.plan === "custom") delete plan["d" + el.dataset.day];
+    else plan["d" + el.dataset.day] = el.dataset.plan;
+    state.data[uPl].workoutPlan = plan;
     savePersisted();
     render();
   } else if (action === "export-log") {

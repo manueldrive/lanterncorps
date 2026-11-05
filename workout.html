@@ -150,7 +150,7 @@ h2{font-family:var(--display);font-weight:800;font-size:1.3rem;letter-spacing:.0
 
 <div class="wrap">
   <div class="topbar">
-    <a class="back" id="back" href="v2.html">← Battery Log</a>
+    <a class="back" id="back" href="index.html">← Battery Log</a>
     <span class="callsign" id="callsign"></span>
   </div>
   <header>
@@ -339,7 +339,7 @@ if(DAYS[dParam]&&dParam!==day){ day=dParam; EX=DAYS[day].ex; cur=0; }
 
 // ---------- Storage: Lanterncorps Firebase (own branch per lantern), local fallback ----------
 // Workout logs live under lantern_workouts_v1/<lantern>, NOT inside the Battery Log node, so the main app's
-// full-node saves can never wipe them. Finishing writes a small flag that v2.html turns into the checkmark.
+// full-node saves can never wipe them. Finishing writes a small flag that index.html turns into the checkmark.
 const FIREBASE={apiKey:"AIzaSyDMxcuNZmdic9AZIL5uQwvGdxKnGW2Uq_c",authDomain:"bao-buddy.firebaseapp.com",
   databaseURL:"https://bao-buddy-default-rtdb.firebaseio.com",projectId:"bao-buddy",storageBucket:"bao-buddy.firebasestorage.app",
   messagingSenderId:"167816448505",appId:"1:167816448505:web:35d57633f3caea0ba71528"};
@@ -456,7 +456,7 @@ $("prev").onclick=()=>go(cur-1);
 $("next").onclick=()=>{ if(cur<EX.length-1) go(cur+1); else finish(); };
 
 // ---------- Finish: flag today as trained, then head back to Battery Log to charge the ring ----------
-const BACK="v2.html?tab="+U;
+const BACK="index.html?tab="+U;
 let finishedToday=false;
 function renderFinish(){
   const b=$("finish");
@@ -563,7 +563,7 @@ $("pause").onclick=()=>{ if(!yt.on()) return; yt.paused=!yt.paused; yt.paused?yt
 
 // ---------- Boot ----------
 $("today").textContent=fmtDate(TODAY);
-$("callsign").textContent=window.LANTERN.callsign; $("back").href="v2.html?tab="+U;
+$("callsign").textContent=window.LANTERN.callsign; $("back").href="index.html?tab="+U;
 renderRestPick();
 history=lsGet(LK+"sessions")||[];
 const localToday=history.find(s=>s.date===TODAY); if(localToday) session=fillSession(localToday);
