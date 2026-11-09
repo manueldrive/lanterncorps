@@ -414,6 +414,19 @@
   }
   .train-btn:hover { background: rgba(255, 255, 255, 0.06); }
 
+  .consistency { width: 150px; flex-shrink: 0; text-align: right; }
+  .consistency-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: #94A3B8; white-space: nowrap; }
+  .consistency-row { display: flex; justify-content: flex-end; align-items: baseline; gap: 8px; margin: 2px 0 6px; }
+  .consistency-pct { font-family: 'Orbitron', monospace; font-weight: 900; font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .consistency-pct small { font-size: 13px; margin-left: 1px; }
+  .consistency-status { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; }
+  .consistency-bar { position: relative; height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); }
+  .consistency-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: linear-gradient(90deg, #00FF88, #00E5FF); box-shadow: 0 0 10px rgba(0, 255, 136, 0.45); transition: width 0.5s ease; }
+  .consistency-goal { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: #ffffff; border-radius: 1px; }
+  .consistency-goal span { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); font-family: 'Share Tech Mono', monospace; font-size: 9px; color: #E2E8F0; }
+  @media (max-width: 420px) { .hdr-title { font-size: 10px !important; letter-spacing: 0.5px !important; } .consistency { width: 132px; } .consistency-pct { font-size: 22px; } .consistency-label { letter-spacing: 1px; } }
+  @media (prefers-reduced-motion: reduce) { .consistency-fill { transition: none; } }
+
   .check-btn {
     width: 32px;
     height: 32px;
@@ -813,6 +826,43 @@ function sanitizeState() {
       state.selectedDate[u] = todayDateString();
     }
   });
+}
+
+// Corps consistency: share of all checklist items completed by both lanterns this month,
+// from the 1st through today (today counts as it goes). Goal is 80%.
+var CONSISTENCY_GOAL = 0.8;
+function monthConsistency() {
+  var now = new Date();
+  var done = 0, total = 0;
+  for (var d = 1; d <= now.getDate(); d++) {
+    var dateStr = todayDateString(new Date(now.getFullYear(), now.getMonth(), d));
+    Object.keys(USERS).forEach(function(u) {
+      var ev = evaluateDayRecord(state.data[u], dateStr);
+      done += ev.completedCount;
+      total += ev.totalRequired;
+    });
+  }
+  return { done: done, total: total, ratio: total ? done / total : 0 };
+}
+
+function renderConsistencyMeter() {
+  var c = monthConsistency();
+  var pct = Math.round(c.ratio * 100);
+  var goalPct = Math.round(CONSISTENCY_GOAL * 100);
+  var hit = c.ratio >= CONSISTENCY_GOAL;
+  var month = new Date().toLocaleDateString(undefined, { month: "short" }).toUpperCase();
+  var status = hit ? "ON TARGET" : (goalPct - pct) + "% TO GOAL";
+  return '<div class="consistency" aria-label="Corps consistency this month: ' + pct + ' percent of checklist done, goal ' + goalPct + ' percent">' +
+    '<div class="consistency-label">' + month + ' CONSISTENCY</div>' +
+    '<div class="consistency-row">' +
+      '<span class="consistency-pct" style="color:' + (hit ? '#00FF88' : '#E2E8F0') + '">' + pct + '<small>%</small></span>' +
+      '<span class="consistency-status" style="color:' + (hit ? '#00FF88' : '#94A3B8') + '">' + status + '</span>' +
+    '</div>' +
+    '<div class="consistency-bar">' +
+      '<div class="consistency-fill" style="width:' + Math.min(100, pct) + '%"></div>' +
+      '<div class="consistency-goal" style="left:' + goalPct + '%"><span>' + goalPct + '%</span></div>' +
+    '</div>' +
+  '</div>';
 }
 
 function evaluateDayRecord(uData, dateStr) {
@@ -1618,13 +1668,10 @@ function render() {
 
   html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(0, 255, 136, 0.2); padding-bottom:12px;">' +
     '<div>' +
-      '<div style="font-family:\'Share Tech Mono\', monospace; font-size:12px; letter-spacing:2px; color:#6EE7B7;"><i class="fa-solid fa-satellite" style="margin-right:6px"></i>OA CENTRAL BATTERY // LOG</div>' +
+      '<div class="hdr-title" style="font-family:\'Share Tech Mono\', monospace; font-size:12px; letter-spacing:2px; color:#6EE7B7; white-space:nowrap;"><i class="fa-solid fa-satellite" style="margin-right:6px"></i>OA CENTRAL BATTERY // LOG</div>' +
       '<div class="header-clock">' + timeStr + ' <span style="font-size:14px; color:#6EE7B7">' + ampm + '</span></div>' +
     '</div>' +
-    '<div style="text-align:right">' +
-      '<div style="font-size:11px; letter-spacing:1px; color:#94A3B8;">BATTERY SYNC</div>' +
-      '<div style="font-family:\'Orbitron\'; font-weight:700; color:#00FF88; font-size:13px;">0104 <span style="color:#64748B">&amp;</span> <span style="color:#00E5FF">0211</span></div>' +
-    '</div>' +
+    renderConsistencyMeter() +
   '</div>';
 
   html += '<div class="narrow-only" style="display:flex; gap:12px; margin-bottom:16px;">' +
