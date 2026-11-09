@@ -896,6 +896,24 @@ function savePersisted() {
   if (Object.keys(updates).length) dbRef.update(updates);
 }
 
+// Start a new day if the date has changed since the last one recorded: yesterday's checks
+// go to history and today's checklist clears. Returns true when it rolled over.
+function rolloverIfNeeded() {
+  if (!persistLoaded) return false;
+  var today = todayDateString();
+  if (!state.lastActiveDate || state.lastActiveDate === today) return false;
+  var prevDate = state.lastActiveDate;
+  Object.keys(USERS).forEach(function(u) {
+    syncDayToHistory(u, prevDate);
+    state.data[u].done = {};
+    state.data[u].weight = "";
+    state.selectedDate[u] = today;
+  });
+  state.lastActiveDate = today;
+  savePersisted();
+  return true;
+}
+
 function initPersistence() {
   dbRef.on("value", function (snapshot) {
     var saved = snapshot.val();
@@ -912,14 +930,7 @@ function initPersistence() {
     persistLoaded = true;
 
     if (state.lastActiveDate && state.lastActiveDate !== today) {
-      Object.keys(USERS).forEach(function(u) {
-        syncDayToHistory(u, state.lastActiveDate);
-        state.data[u].done = {};
-        state.data[u].weight = "";
-        state.selectedDate[u] = today;
-      });
-      state.lastActiveDate = today;
-      savePersisted();
+      rolloverIfNeeded();
     } else if (!state.lastActiveDate) {
       state.lastActiveDate = today;
       savePersisted();
@@ -1648,6 +1659,7 @@ function render() {
 
 /* ---------------- Event Listeners ---------------- */
 document.getElementById("root").addEventListener("click", function(e) {
+  if (rolloverIfNeeded()) { render(); return; } // the day changed; show today before counting the tap
   var el = e.target.closest("[data-action]");
   if (!el) return;
   var action = el.dataset.action;
@@ -1852,7 +1864,17 @@ document.getElementById("root").addEventListener("input", function(e) {
   }
 });
 
+// A new day can start while the page stays open (e.g. a home-screen app resumed in the morning).
+// Check on a timer, whenever the page comes back into view, and before any tap counts.
+document.addEventListener("visibilitychange", function() {
+  if (!document.hidden && rolloverIfNeeded()) render();
+});
+window.addEventListener("focus", function() {
+  if (rolloverIfNeeded()) render();
+});
+
 setInterval(function() {
+  rolloverIfNeeded();
   var activeEl = document.activeElement;
   if (!activeEl || (activeEl.tagName !== "INPUT" && activeEl.tagName !== "TEXTAREA")) {
     render();
