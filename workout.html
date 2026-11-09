@@ -356,14 +356,25 @@ const store={ref:null,mode:"local",
     if(this.mode==="db"){
       try{
         const snap=await withTimeout(this.ref.once("value"),8000), v=snap.val()||{};
-        const sessions=Object.values(v.sessions||{});
-        // One-time import of logs from the standalone workout page (same github.io origin), for Lantern 0104 only.
-        const legacy=lsGet("legday.sessions");
-        if(U==="p1"&&!sessions.length&&Array.isArray(legacy)&&legacy.length&&!lsGet(LK+"imported")){
-          for(const s of legacy){ await this.ref.child("sessions/"+s.date).set(JSON.parse(JSON.stringify(s))); sessions.push(s); }
-          lsSet(LK+"imported",true);
+        const byDate={}; Object.values(v.sessions||{}).forEach(s=>{ if(s&&s.date) byDate[s.date]=s; });
+        // Gather logs saved anywhere else and fill in missing days (or days with fewer sets logged):
+        // sets saved offline on this phone, the standalone workout page, and houses' storage from before the sync.
+        const others=[];
+        ["lantern.wo."+U+".sessions","house.wo."+U+".sessions"].forEach(k=>{ const a=lsGet(k); if(Array.isArray(a)) others.push(...a); });
+        if(U==="p1"){ const a=lsGet("legday.sessions"); if(Array.isArray(a)) others.push(...a); }
+        if(U!=="p3"){
+          try{ const old=await withTimeout(firebase.database().ref("house_workouts_v1/"+U+"/sessions").once("value"),8000);
+               others.push(...Object.values(old.val()||{})); }catch(e){}
         }
-        return {sessions,settings:v.settings||null,finished:v.finished||{}};
+        const logged=s=>Object.values((s&&s.ex)||{}).reduce((n,e)=>n+((e&&e.sets)||[]).filter(x=>x&&(x.r!==""||x.w!=="")).length,0);
+        for(const s of others){
+          if(!s||!s.date||!s.ex||s.date>TODAY) continue;
+          if(!byDate[s.date]||logged(s)>logged(byDate[s.date])){
+            byDate[s.date]=s;
+            try{ await this.ref.child("sessions/"+s.date).set(JSON.parse(JSON.stringify(s))); }catch(e){}
+          }
+        }
+        return {sessions:Object.values(byDate),settings:v.settings||null,finished:v.finished||{}};
       }catch(e){ this.mode="local"; }
     }
     return {sessions:lsGet(LK+"sessions")||[],settings:null,finished:{}};
